@@ -459,7 +459,9 @@ class TournamentManager {
     createSetsDisplay(sets) {
         let setsHtml = '<div class="sets-display">';
         sets.forEach((set, index) => {
-            if (set.teamAScore !== '' && set.teamBScore !== '') {
+            const scoreA = parseInt(set.teamAScore);
+            const scoreB = parseInt(set.teamBScore);
+            if (Number.isFinite(scoreA) && Number.isFinite(scoreB)) {
                 setsHtml += `
                     <div class="set-row">
                         <span class="set-label">SET ${index + 1}</span>
@@ -473,9 +475,17 @@ class TournamentManager {
     }
 
     createSetInputForm(game) {
-        const set1Complete = game.sets[0].teamAScore !== '' && game.sets[0].teamBScore !== '';
-        const set2Complete = game.sets[1].teamAScore !== '' && game.sets[1].teamBScore !== '';
-        const set3Complete = game.sets[2].teamAScore !== '' && game.sets[2].teamBScore !== '';
+        // Validate and normalize scores to ensure they are valid numbers
+        const set1ScoreA = parseInt(game.sets[0].teamAScore);
+        const set1ScoreB = parseInt(game.sets[0].teamBScore);
+        const set2ScoreA = parseInt(game.sets[1].teamAScore);
+        const set2ScoreB = parseInt(game.sets[1].teamBScore);
+        const set3ScoreA = parseInt(game.sets[2].teamAScore);
+        const set3ScoreB = parseInt(game.sets[2].teamBScore);
+        
+        const set1Complete = Number.isFinite(set1ScoreA) && Number.isFinite(set1ScoreB);
+        const set2Complete = Number.isFinite(set2ScoreA) && Number.isFinite(set2ScoreB);
+        const set3Complete = Number.isFinite(set3ScoreA) && Number.isFinite(set3ScoreB);
         
         // Determine if Set 3 should be shown
         const shouldShowSet3 = set1Complete && set2Complete && 
@@ -488,10 +498,10 @@ class TournamentManager {
                 <div class="set-input-group">
                     <label>SET 1</label>
                     <div class="set-inputs">
-                        <input type="number" id="set1_scoreA_${game.id}" placeholder="Team A" min="0" max="30" 
+                        <input type="number" id="set1_scoreA_${game.id}" placeholder="Team A" min="0" max="21" 
                                value="${game.sets[0].teamAScore}" ${set1Complete ? 'readonly' : ''}>
                         <span class="set-separator">-</span>
-                        <input type="number" id="set1_scoreB_${game.id}" placeholder="Team B" min="0" max="30"
+                        <input type="number" id="set1_scoreB_${game.id}" placeholder="Team B" min="0" max="21"
                                value="${game.sets[0].teamBScore}" ${set1Complete ? 'readonly' : ''}>
                     </div>
                     ${!set1Complete ? `<button class="btn-close-set" onclick="tournamentManager.closeSet(${game.id}, 1)">
@@ -502,10 +512,10 @@ class TournamentManager {
                 <div class="set-input-group">
                     <label>SET 2</label>
                     <div class="set-inputs">
-                        <input type="number" id="set2_scoreA_${game.id}" placeholder="Team A" min="0" max="30"
+                        <input type="number" id="set2_scoreA_${game.id}" placeholder="Team A" min="0" max="21"
                                value="${game.sets[1].teamAScore}" ${set2Complete ? 'readonly' : ''}>
                         <span class="set-separator">-</span>
-                        <input type="number" id="set2_scoreB_${game.id}" placeholder="Team B" min="0" max="30"
+                        <input type="number" id="set2_scoreB_${game.id}" placeholder="Team B" min="0" max="21"
                                value="${game.sets[1].teamBScore}" ${set2Complete ? 'readonly' : ''}>
                     </div>
                     ${!set2Complete ? `<button class="btn-close-set" onclick="tournamentManager.closeSet(${game.id}, 2)">
@@ -517,10 +527,10 @@ class TournamentManager {
                 <div class="set-input-group" id="set3_group_${game.id}">
                     <label>SET 3 (15 points, 2-point advantage)</label>
                     <div class="set-inputs">
-                        <input type="number" id="set3_scoreA_${game.id}" placeholder="Team A" min="0" max="20"
+                        <input type="number" id="set3_scoreA_${game.id}" placeholder="Team A" min="0" max="15"
                                value="${game.sets[2].teamAScore}" ${set3Complete ? 'readonly' : ''}>
                         <span class="set-separator">-</span>
-                        <input type="number" id="set3_scoreB_${game.id}" placeholder="Team B" min="0" max="20"
+                        <input type="number" id="set3_scoreB_${game.id}" placeholder="Team B" min="0" max="15"
                                value="${game.sets[2].teamBScore}" ${set3Complete ? 'readonly' : ''}>
                     </div>
                     ${!set3Complete ? `<button class="btn-close-set" onclick="tournamentManager.closeSet(${game.id}, 3)">
@@ -558,14 +568,16 @@ class TournamentManager {
     }
 
     getMatchResult(sets) {
-        const teamAWins = sets.filter(set => 
-            set.teamAScore !== '' && set.teamBScore !== '' && 
-            parseInt(set.teamAScore) > parseInt(set.teamBScore)
-        ).length;
-        const teamBWins = sets.filter(set => 
-            set.teamAScore !== '' && set.teamBScore !== '' && 
-            parseInt(set.teamBScore) > parseInt(set.teamAScore)
-        ).length;
+        const teamAWins = sets.filter(set => {
+            const scoreA = parseInt(set.teamAScore);
+            const scoreB = parseInt(set.teamBScore);
+            return Number.isFinite(scoreA) && Number.isFinite(scoreB) && scoreA > scoreB;
+        }).length;
+        const teamBWins = sets.filter(set => {
+            const scoreA = parseInt(set.teamAScore);
+            const scoreB = parseInt(set.teamBScore);
+            return Number.isFinite(scoreA) && Number.isFinite(scoreB) && scoreB > scoreA;
+        }).length;
         
         if (teamAWins > teamBWins) {
             return `Team A wins ${teamAWins}-${teamBWins}`;
@@ -723,8 +735,12 @@ class TournamentManager {
     }
 
     canFinishGame(game) {
-        // Game can be finished if at least 2 sets are completed and scores are valid
-        const completedSets = game.sets.filter(set => set.teamAScore !== '' && set.teamBScore !== '');
+        // Game can be finished if at least 2 sets are completed and scores are valid numbers
+        const completedSets = game.sets.filter(set => {
+            const scoreA = parseInt(set.teamAScore);
+            const scoreB = parseInt(set.teamBScore);
+            return Number.isFinite(scoreA) && Number.isFinite(scoreB);
+        });
         return completedSets.length >= 2;
     }
 
@@ -754,11 +770,15 @@ class TournamentManager {
         this.renderGames();
 
         // Update Google Sheets if configured
-        if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
-            await this.updateGoogleSheets(gameId);
+        try {
+            if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
+                await this.updateGoogleSheets(gameId);
+            }
+            alert(`Set ${setNumber} closed successfully!`);
+        } catch (error) {
+            console.error('Error updating Google Sheets:', error);
+            alert(`Set ${setNumber} closed, but there was an error updating Google Sheets. Please try again later.`);
         }
-
-        alert(`Set ${setNumber} closed successfully!`);
     }
 
     validateSetScore(scoreA, scoreB, maxScore) {
@@ -766,14 +786,20 @@ class TournamentManager {
             alert('Scores cannot be negative.');
             return false;
         }
-        if (scoreA > maxScore || scoreB > maxScore) {
-            alert(`Scores cannot exceed ${maxScore}.`);
-            return false;
-        }
         if (scoreA === scoreB) {
             alert('Scores cannot be tied. Beach volleyball requires a 2-point advantage.');
             return false;
         }
+        
+        // Check if either score has reached or exceeded the threshold
+        if (scoreA >= maxScore || scoreB >= maxScore) {
+            // Winner must lead by at least 2 points
+            if (Math.abs(scoreA - scoreB) < 2) {
+                alert(`When a score reaches ${maxScore}, the winner must lead by at least 2 points.`);
+                return false;
+            }
+        }
+        
         return true;
     }
 }
