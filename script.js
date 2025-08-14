@@ -12,8 +12,10 @@ class TournamentManager {
             await this.loadTournamentData();
             this.categorizeGames();
             this.renderGames();
+            this.hideLoading(); // Hide loading spinner after data loads
         } catch (error) {
             this.showError('Failed to initialize tournament manager: ' + error.message);
+            this.hideLoading(); // Hide loading even if there's an error
         }
     }
 
@@ -48,7 +50,7 @@ class TournamentManager {
                     { teamAScore: '', teamBScore: '' },
                     { teamAScore: '', teamBScore: '' }
                 ],
-                status: 'scheduled',
+                status: 'current',
                 userConfirmed: false,
                 eventManagerConfirmed: false
             },
@@ -111,8 +113,51 @@ class TournamentManager {
                 status: 'scheduled',
                 userConfirmed: false,
                 eventManagerConfirmed: false
+            },
+            {
+                id: 5,
+                matchNumber: 5,
+                tournament: 'Women',
+                gruppe: 'A',
+                court: 'Court 5',
+                startzeit: '9:45',
+                team1: 'Team 3 Gruppe A',
+                team2: 'Team 14 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 6,
+                matchNumber: 6,
+                tournament: 'Women',
+                gruppe: 'B',
+                court: 'Court 6',
+                startzeit: '9:45',
+                team1: 'Team 6 Gruppe B',
+                team2: 'Team 11 Gruppe B',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
             }
         ];
+        
+        console.log('Demo data loaded:', this.games.length, 'games');
+        console.log('Games:', this.games);
     }
 
     async loadFromGoogleSheets() {
@@ -150,10 +195,20 @@ class TournamentManager {
     }
 
     categorizeGames() {
+        console.log('Categorizing games...');
+        
+        // Reset all games to scheduled first
+        this.games.forEach(game => {
+            if (!game.eventManagerConfirmed) {
+                game.status = 'scheduled';
+            }
+        });
+
         // Find the first unconfirmed game to make it current
         const unconfirmedGame = this.games.find(g => !g.eventManagerConfirmed);
         if (unconfirmedGame) {
             unconfirmedGame.status = 'current';
+            console.log('Set game', unconfirmedGame.id, 'as current');
         }
 
         // Update other games based on confirmation status
@@ -162,9 +217,14 @@ class TournamentManager {
                 game.status = 'finished';
             } else if (game.userConfirmed && !game.eventManagerConfirmed) {
                 game.status = 'pending_confirmation';
-            } else if (game.status === 'current' && game !== unconfirmedGame) {
-                game.status = 'scheduled';
             }
+            // Keep the first unconfirmed game as 'current'
+            // All others remain 'scheduled' until they're confirmed
+        });
+        
+        console.log('Games after categorization:');
+        this.games.forEach(game => {
+            console.log(`Game ${game.id}: ${game.status}`);
         });
     }
 
@@ -525,6 +585,20 @@ class TournamentManager {
             errorDiv.style.display = 'none';
         }
     }
+
+    hideLoading() {
+        const loadingDiv = document.getElementById('loading');
+        if (loadingDiv) {
+            loadingDiv.style.display = 'none';
+        }
+    }
+
+    showLoading() {
+        const loadingDiv = document.getElementById('loading');
+        if (loadingDiv) {
+            loadingDiv.style.display = 'block';
+        }
+    }
 }
 
 // Global tournament manager instance
@@ -540,6 +614,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function refreshData() {
     if (tournamentManager) {
         tournamentManager.hideError();
+        tournamentManager.showLoading();
         tournamentManager.loadTournamentData();
     }
 }
