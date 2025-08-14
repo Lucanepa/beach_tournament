@@ -109,6 +109,64 @@
             opacity: 0.8;
         }
 
+        .game-card.pending-confirmation {
+            border-color: #ffc107;
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        }
+
+        .set-input-form {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .set-input-form h4 {
+            margin-bottom: 15px;
+            color: #495057;
+            text-align: center;
+        }
+
+        .confirmation-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-edit, .btn-confirm {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #545b62;
+        }
+
+        .btn-confirm {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: #218838;
+        }
+
+        .status-pending {
+            background: #ffc107;
+            color: #212529;
+        }
+
         .game-header {
             display: flex;
             justify-content: space-between;
@@ -377,6 +435,9 @@
                 <a href="tableau.html" class="refresh-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
                     <i class="fas fa-trophy"></i> View Tournament Bracket
                 </a>
+                <a href="event_manager.html" class="refresh-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
+                    <i class="fas fa-user-shield"></i> Event Manager
+                </a>
             </div>
             
             <div id="loading" class="loading">
@@ -397,6 +458,13 @@
                 <h2><i class="fas fa-clock"></i> Next Games</h2>
                 <div id="nextGames" class="game-grid">
                     <!-- Next games will be populated here -->
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2><i class="fas fa-hourglass-half"></i> Pending Confirmations</h2>
+                <div id="pendingConfirmations" class="game-grid">
+                    <!-- Games waiting for event manager confirmation will be populated here -->
                 </div>
             </div>
             

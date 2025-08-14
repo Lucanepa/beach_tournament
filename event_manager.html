@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Manager - Beach Tournament</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .navigation {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.secondary {
+            background: #95a5a6;
+        }
+
+        .nav-btn.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #e74c3c;
+        }
+
+        .section h2 {
+            color: #ecf0f1;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2 i {
+            color: #e74c3c;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: #e74c3c;
+        }
+
+        .game-card.pending-confirmation {
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.1);
+        }
+
+        .game-card.current {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .game-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #f39c12;
+            color: #2c3e50;
+        }
+
+        .status-current {
+            background: #27ae60;
+            color: white;
+        }
+
+        .teams {
+            margin-bottom: 15px;
+        }
+
+        .team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .team.team-a {
+            border-left: 4px solid #3498db;
+        }
+
+        .team.team-b {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .team-name {
+            font-weight: 500;
+        }
+
+        .team-score {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .info-item strong {
+            display: block;
+            color: #ecf0f1;
+            margin-bottom: 3px;
+        }
+
+        .sets-display {
+            margin-bottom: 15px;
+        }
+
+        .set-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .set-label {
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+
+        .set-score {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        .match-result {
+            text-align: center;
+            padding: 12px;
+            margin-top: 10px;
+            background: #27ae60;
+            color: white;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .confirmation-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-edit, .btn-confirm, .btn-reject {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #7f8c8d;
+        }
+
+        .btn-confirm {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: #229954;
+        }
+
+        .btn-reject {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #c0392b;
+        }
+
+        .tournament-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .overview-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .overview-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #f39c12;
+            margin-bottom: 10px;
+        }
+
+        .overview-label {
+            font-size: 1rem;
+            color: #ecf0f1;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #ecf0f1;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid rgba(231, 76, 60, 0.5);
+        }
+
+        .success {
+            background: rgba(39, 174, 96, 0.2);
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid rgba(39, 174, 96, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .game-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tournament-overview {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-user-shield"></i> Event Manager</h1>
+            <p>Tournament oversight and game confirmation</p>
+        </div>
+        
+        <div class="content">
+            <div class="navigation">
+                <a href="index.html" class="nav-btn">
+                    <i class="fas fa-home"></i> Tournament Manager
+                </a>
+                <a href="tableau.html" class="nav-btn secondary">
+                    <i class="fas fa-trophy"></i> Tournament Bracket
+                </a>
+                <button class="nav-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+
+            <!-- Tournament Overview -->
+            <div class="section">
+                <h2><i class="fas fa-chart-bar"></i> Tournament Overview</h2>
+                <div class="tournament-overview">
+                    <div class="overview-card">
+                        <div class="overview-number" id="totalGames">0</div>
+                        <div class="overview-label">Total Games</div>
+                    </div>
+                    <div class="overview-card">
+                        <div class="overview-number" id="currentGames">0</div>
+                        <div class="overview-label">In Progress</div>
+                    </div>
+                    <div class="overview-card">
+                        <div class="overview-number" id="pendingConfirmations">0</div>
+                        <div class="overview-label">Pending Confirmation</div>
+                    </div>
+                    <div class="overview-card">
+                        <div class="overview-number" id="finishedGames">0</div>
+                        <div class="overview-label">Completed</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="loading" class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Loading tournament data...</p>
+            </div>
+            
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="success" class="success" style="display: none;"></div>
+            
+            <!-- Pending Confirmations -->
+            <div class="section">
+                <h2><i class="fas fa-hourglass-half"></i> Games Pending Confirmation</h2>
+                <div id="pendingConfirmations" class="game-grid">
+                    <!-- Games waiting for confirmation will be populated here -->
+                </div>
+            </div>
+            
+            <!-- Current Games -->
+            <div class="section">
+                <h2><i class="fas fa-play-circle"></i> Games In Progress</h2>
+                <div id="currentGames" class="game-grid">
+                    <!-- Current games will be populated here -->
+                </div>
+            </div>
+            
+            <!-- Recent Finished Games -->
+            <div class="section">
+                <h2><i class="fas fa-flag-checkered"></i> Recently Completed</h2>
+                <div id="recentFinished" class="game-grid">
+                    <!-- Recently finished games will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="event_manager.js"></script>
+</body>
+</html>

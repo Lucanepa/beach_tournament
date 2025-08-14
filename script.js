@@ -2,527 +2,544 @@
 class TournamentManager {
     constructor() {
         this.games = [];
-        this.currentGames = [];
-        this.nextGames = [];
-        this.finishedGames = [];
-        this.googleSheetsId = null;
-        this.apiKey = null;
-        
-        this.init();
+        this.googleSheetsId = 'YOUR_GOOGLE_SHEET_ID_HERE';
+        this.googleSheetsApiKey = 'YOUR_GOOGLE_SHEETS_API_KEY_HERE';
+        this.currentGameIndex = 0;
     }
 
     async init() {
         try {
-            // Load configuration
-            await this.loadConfig();
-            
-            // Load initial data
             await this.loadTournamentData();
-            
+            this.categorizeGames();
+            this.renderGames();
         } catch (error) {
             this.showError('Failed to initialize tournament manager: ' + error.message);
         }
     }
 
-    async loadConfig() {
-        try {
-            // For demo purposes, you can hardcode these values
-            // In production, you'd want to load these from a config file or environment variables
-            this.googleSheetsId = 'YOUR_GOOGLE_SHEET_ID_HERE';
-            this.apiKey = 'YOUR_GOOGLE_API_KEY_HERE';
-            
-            // If you don't have these yet, show a setup message
-            if (!this.googleSheetsId || this.googleSheetsId === 'YOUR_GOOGLE_SHEET_ID_HERE') {
-                this.showSetupInstructions();
-                return;
-            }
-        } catch (error) {
-            console.error('Error loading config:', error);
-        }
-    }
-
-    showSetupInstructions() {
-        const loadingEl = document.getElementById('loading');
-        loadingEl.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <i class="fas fa-cog" style="font-size: 3rem; color: #ff6b6b; margin-bottom: 20px;"></i>
-                <h3>Setup Required</h3>
-                <p>To use this tournament manager, you need to:</p>
-                <ol style="text-align: left; max-width: 500px; margin: 20px auto;">
-                    <li>Create a Google Sheet with tournament data</li>
-                    <li>Get your Google Sheets ID from the URL</li>
-                    <li>Enable Google Sheets API and get an API key</li>
-                    <li>Update the configuration in script.js</li>
-                </ol>
-                <p><strong>For now, using demo data to show the interface.</strong></p>
-                <button onclick="tournamentManager.loadDemoData()" class="refresh-btn">
-                    <i class="fas fa-play"></i> Load Demo Data
-                </button>
-            </div>
-        `;
-    }
-
     async loadTournamentData() {
         try {
-            this.showLoading(true);
-            
             if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
                 await this.loadFromGoogleSheets();
             } else {
-                // Load demo data if no Google Sheets configured
-                await this.loadDemoData();
+                this.loadDemoData();
             }
-            
-            this.categorizeGames();
-            this.renderGames();
-            this.showLoading(false);
-            
         } catch (error) {
             this.showError('Failed to load tournament data: ' + error.message);
-            this.showLoading(false);
+            this.loadDemoData(); // Fallback to demo data
         }
+    }
+
+    loadDemoData() {
+        this.games = [
+            {
+                id: 1,
+                matchNumber: 1,
+                tournament: 'Men',
+                gruppe: 'A',
+                court: 'Court 1',
+                startzeit: '9:45',
+                team1: 'Team 1 Gruppe A',
+                team2: 'Team 16 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 2,
+                matchNumber: 2,
+                tournament: 'Men',
+                gruppe: 'A',
+                court: 'Court 2',
+                startzeit: '9:45',
+                team1: 'Team 8 Gruppe A',
+                team2: 'Team 9 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 3,
+                matchNumber: 3,
+                tournament: 'Men',
+                gruppe: 'B',
+                court: 'Court 3',
+                startzeit: '9:45',
+                team1: 'Team 5 Gruppe B',
+                team2: 'Team 12 Gruppe B',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 4,
+                matchNumber: 4,
+                tournament: 'Women',
+                gruppe: 'A',
+                court: 'Court 4',
+                startzeit: '9:45',
+                team1: 'Team 4 Gruppe A',
+                team2: 'Team 13 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            }
+        ];
     }
 
     async loadFromGoogleSheets() {
-        try {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.googleSheetsId}/values/Sheet1?key=${this.apiKey}`;
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            this.parseGoogleSheetsData(data.values);
-            
-        } catch (error) {
-            console.error('Error loading from Google Sheets:', error);
-            throw new Error('Failed to connect to Google Sheets. Please check your API key and sheet ID.');
-        }
-    }
-
-    parseGoogleSheetsData(values) {
-        if (!values || values.length < 2) {
-            throw new Error('No data found in Google Sheet');
-        }
-
-        const headers = values[0];
-        this.games = [];
-
-        for (let i = 1; i < values.length; i++) {
-            const row = values[i];
-            if (row.length >= headers.length) {
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.googleSheetsId}/values/Sheet1!A:N?key=${this.googleSheetsApiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.values && data.values.length > 1) {
+            this.games = [];
+            for (let i = 1; i < data.values.length; i++) {
+                const row = data.values[i];
                 const game = {
                     id: i,
-                    teamA: row[0] || 'Team A',
-                    teamB: row[1] || 'Team B',
-                    court: row[2] || 'Court 1',
-                    time: row[3] || '10:00 AM',
-                    status: row[4] || 'scheduled', // scheduled, current, finished
+                    matchNumber: row[0] || i,
+                    tournament: row[1] || 'Men',
+                    gruppe: row[2] || 'A',
+                    court: row[3] || 'Court 1',
+                    startzeit: row[4] || '9:45',
+                    team1: row[5] || 'Team 1',
+                    team2: row[6] || 'Team 2',
+                    resultat: row[7] || '<->',
+                    dauer: row[8] || '0:00',
                     sets: [
-                        { teamAScore: row[5] || '', teamBScore: row[6] || '' },
-                        { teamAScore: row[7] || '', teamBScore: row[8] || '' },
-                        { teamAScore: row[9] || '', teamBScore: row[10] || '' }
+                        { teamAScore: row[9] || '', teamBScore: row[10] || '' },
+                        { teamAScore: row[11] || '', teamBScore: row[12] || '' },
+                        { teamAScore: row[13] || '', teamBScore: row[14] || '' }
                     ],
-                    date: row[11] || new Date().toLocaleDateString()
+                    status: 'scheduled',
+                    userConfirmed: false,
+                    eventManagerConfirmed: false
                 };
                 this.games.push(game);
             }
         }
     }
 
-    loadDemoData() {
-        // Demo data to show the interface
-        this.games = [
-            {
-                id: 1,
-                teamA: 'Beach Bombers',
-                teamB: 'Sand Sharks',
-                court: 'Court 1',
-                time: '10:00 AM',
-                status: 'current',
-                sets: [
-                    { teamAScore: 21, teamBScore: 19 },
-                    { teamAScore: 18, teamBScore: 21 },
-                    { teamAScore: '', teamBScore: '' }
-                ],
-                date: '2024-01-15'
-            },
-            {
-                id: 2,
-                teamA: 'Volley Vikings',
-                teamB: 'Sunset Spikers',
-                court: 'Court 2',
-                time: '10:30 AM',
-                status: 'current',
-                sets: [
-                    { teamAScore: 21, teamBScore: 18 },
-                    { teamAScore: '', teamBScore: '' },
-                    { teamAScore: '', teamBScore: '' }
-                ],
-                date: '2024-01-15'
-            },
-            {
-                id: 3,
-                teamA: 'Wave Warriors',
-                teamB: 'Tide Titans',
-                court: 'Court 1',
-                time: '11:00 AM',
-                status: 'scheduled',
-                sets: [
-                    { teamAScore: '', teamBScore: '' },
-                    { teamAScore: '', teamBScore: '' },
-                    { teamAScore: '', teamBScore: '' }
-                ],
-                date: '2024-01-15'
-            },
-            {
-                id: 4,
-                teamA: 'Coastal Crushers',
-                teamB: 'Ocean Outlaws',
-                court: 'Court 2',
-                time: '11:30 AM',
-                status: 'scheduled',
-                sets: [
-                    { teamAScore: '', teamBScore: '' },
-                    { teamAScore: '', teamBScore: '' },
-                    { teamAScore: '', teamBScore: '' }
-                ],
-                date: '2024-01-15'
-            },
-            {
-                id: 5,
-                teamA: 'Beach Bandits',
-                teamB: 'Sand Storm',
-                court: 'Court 1',
-                time: '9:00 AM',
-                status: 'finished',
-                sets: [
-                    { teamAScore: 21, teamBScore: 15 },
-                    { teamAScore: 21, teamBScore: 18 }
-                ],
-                date: '2024-01-15'
-            },
-            {
-                id: 6,
-                teamA: 'Volley Vipers',
-                teamB: 'Sunset Strikers',
-                court: 'Court 2',
-                time: '9:30 AM',
-                status: 'finished',
-                sets: [
-                    { teamAScore: 19, teamBScore: 21 },
-                    { teamAScore: 18, teamBScore: 21 }
-                ],
-                date: '2024-01-15'
-            }
-        ];
-    }
-
     categorizeGames() {
-        this.currentGames = this.games.filter(game => game.status === 'current');
-        this.nextGames = this.games.filter(game => game.status === 'scheduled');
-        this.finishedGames = this.games.filter(game => game.status === 'finished');
+        // Find the first unconfirmed game to make it current
+        const unconfirmedGame = this.games.find(g => !g.eventManagerConfirmed);
+        if (unconfirmedGame) {
+            unconfirmedGame.status = 'current';
+        }
+
+        // Update other games based on confirmation status
+        this.games.forEach(game => {
+            if (game.eventManagerConfirmed) {
+                game.status = 'finished';
+            } else if (game.userConfirmed && !game.eventManagerConfirmed) {
+                game.status = 'pending_confirmation';
+            } else if (game.status === 'current' && game !== unconfirmedGame) {
+                game.status = 'scheduled';
+            }
+        });
     }
 
     renderGames() {
-        this.renderGameSection('currentGames', this.currentGames, 'current');
-        this.renderGameSection('nextGames', this.nextGames, 'next');
-        this.renderGameSection('finishedGames', this.finishedGames, 'finished');
+        this.renderCurrentGames();
+        this.renderNextGames();
+        this.renderFinishedGames();
+        this.renderPendingConfirmations();
     }
 
-    renderGameSection(containerId, games, status) {
-        const container = document.getElementById(containerId);
+    renderCurrentGames() {
+        const container = document.getElementById('currentGames');
+        const currentGames = this.games.filter(g => g.status === 'current');
         
-        if (games.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #6c757d; font-style: italic;">No ${status} games at the moment.</p>`;
+        if (currentGames.length === 0) {
+            container.innerHTML = '<p>No games currently in progress.</p>';
             return;
         }
 
-        container.innerHTML = games.map(game => this.createGameCard(game, status)).join('');
+        container.innerHTML = currentGames.map(game => this.createGameCard(game)).join('');
     }
 
-    createGameCard(game, status) {
-        const statusClass = `status-${status}`;
-        const statusText = status === 'current' ? 'LIVE' : 
-                          status === 'next' ? 'NEXT' : 'FINISHED';
+    renderNextGames() {
+        const container = document.getElementById('nextGames');
+        const nextGames = this.games.filter(g => g.status === 'scheduled').slice(0, 6);
         
-        // Calculate set scores and match status
-        const setScores = this.calculateSetScores(game.sets);
-        const matchStatus = this.getMatchStatus(game.sets);
-        
-        let scoreSection = '';
-        if (status === 'finished') {
-            scoreSection = `
-                <div class="sets-display">
-                    <div class="set-row">
-                        <span class="set-label">Set 1:</span>
-                        <span class="set-score">${game.sets[0].teamAScore} - ${game.sets[0].teamBScore}</span>
-                    </div>
-                    <div class="set-row">
-                        <span class="set-label">Set 2:</span>
-                        <span class="set-score">${game.sets[1].teamAScore} - ${game.sets[1].teamBScore}</span>
-                    </div>
-                    ${game.sets[2] && game.sets[2].teamAScore && game.sets[2].teamBScore ? 
-                        `<div class="set-row">
-                            <span class="set-label">Set 3:</span>
-                            <span class="set-score">${game.sets[2].teamAScore} - ${game.sets[2].teamBScore}</span>
-                        </div>` : ''
-                    }
-                    <div class="match-result">
-                        <strong>Winner: ${this.getWinner(game.sets)}</strong>
-                    </div>
-                </div>
-            `;
-        } else if (status === 'current') {
-            scoreSection = `
-                <div class="sets-display">
-                    <div class="set-row">
-                        <span class="set-label">Set 1:</span>
-                        <span class="set-score">${game.sets[0].teamAScore || '0'} - ${game.sets[0].teamBScore || '0'}</span>
-                    </div>
-                    <div class="set-row">
-                        <span class="set-label">Set 2:</span>
-                        <span class="set-score">${game.sets[1].teamAScore || '0'} - ${game.sets[1].teamBScore || '0'}</span>
-                    </div>
-                    ${this.shouldShowSet3(game.sets) ? 
-                        `<div class="set-row">
-                            <span class="set-label">Set 3:</span>
-                            <span class="set-score">${game.sets[2].teamAScore || '0'} - ${game.sets[2].teamBScore || '0'}</span>
-                        </div>` : ''
-                    }
-                </div>
-                <div class="score-input">
-                    <div class="set-input-group">
-                        <label>Set ${this.getNextSetToFill(game.sets)}:</label>
-                        <div class="set-inputs">
-                            <input type="number" id="set${this.getNextSetToFill(game.sets)}_scoreA_${game.id}" 
-                                   placeholder="Team A" min="0" max="30" 
-                                   value="${this.getSetScore(game.sets, this.getNextSetToFill(game.sets) - 1, 'A')}">
-                            <span class="set-separator">-</span>
-                            <input type="number" id="set${this.getNextSetToFill(game.sets)}_scoreB_${game.id}" 
-                                   placeholder="Team B" min="0" max="30" 
-                                   value="${this.getSetScore(game.sets, this.getNextSetToFill(game.sets) - 1, 'B')}">
-                        </div>
-                    </div>
-                    <button class="submit-score" onclick="tournamentManager.submitSetScore(${game.id}, ${this.getNextSetToFill(game.sets)})">
-                        <i class="fas fa-save"></i> Update Set ${this.getNextSetToFill(game.sets)}
-                    </button>
-                </div>
-            `;
-        } else {
-            scoreSection = `
-                <div class="game-info">
-                    <div class="info-item">
-                        <strong>Status</strong>
-                        <div>Upcoming</div>
-                    </div>
-                    <div class="info-item">
-                        <strong>Court</strong>
-                        <div>${game.court}</div>
-                    </div>
-                </div>
-            `;
+        if (nextGames.length === 0) {
+            container.innerHTML = '<p>No upcoming games scheduled.</p>';
+            return;
         }
 
-        return `
-            <div class="game-card ${status}">
+        container.innerHTML = nextGames.map(game => this.createGameCard(game)).join('');
+    }
+
+    renderFinishedGames() {
+        const container = document.getElementById('finishedGames');
+        const finishedGames = this.games.filter(g => g.status === 'finished');
+        
+        if (finishedGames.length === 0) {
+            container.innerHTML = '<p>No games finished yet.</p>';
+            return;
+        }
+
+        container.innerHTML = finishedGames.map(game => this.createGameCard(game)).join('');
+    }
+
+    renderPendingConfirmations() {
+        const container = document.getElementById('pendingConfirmations');
+        if (!container) return;
+        
+        const pendingGames = this.games.filter(g => g.status === 'pending_confirmation');
+        
+        if (pendingGames.length === 0) {
+            container.innerHTML = '<p>No games pending confirmation.</p>';
+            return;
+        }
+
+        container.innerHTML = pendingGames.map(game => this.createPendingConfirmationCard(game)).join('');
+    }
+
+    createGameCard(game) {
+        const isCurrent = game.status === 'current';
+        const isFinished = game.status === 'finished';
+        
+        let cardContent = `
+            <div class="game-card ${game.status}">
                 <div class="game-header">
-                    <h3>Game ${game.id}</h3>
-                    <span class="game-status ${statusClass}">${statusText}</span>
+                    <h3>Match ${game.matchNumber} - ${game.tournament}</h3>
+                    <span class="game-status status-${game.status}">${this.getStatusText(game.status)}</span>
                 </div>
                 
                 <div class="teams">
                     <div class="team team-a">
-                        <span>${game.teamA}</span>
-                        <span class="team-score">${setScores.teamA}</span>
+                        <span class="team-name">${this.formatTeamName(game.team1)}</span>
+                        <span class="team-score">TEAM A</span>
                     </div>
                     <div class="team team-b">
-                        <span>${game.teamB}</span>
-                        <span class="team-score">${setScores.teamB}</span>
+                        <span class="team-name">${this.formatTeamName(game.team2)}</span>
+                        <span class="team-score">TEAM B</span>
                     </div>
                 </div>
                 
                 <div class="game-info">
                     <div class="info-item">
                         <strong>Court</strong>
-                        <div>${game.court}</div>
+                        <span>${game.court}</span>
                     </div>
                     <div class="info-item">
                         <strong>Time</strong>
-                        <div>${game.time}</div>
+                        <span>${game.startzeit}</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Group</strong>
+                        <span>${game.gruppe}</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Duration</strong>
+                        <span>${game.dauer}</span>
+                    </div>
+                </div>
+        `;
+
+        if (isFinished) {
+            // Show completed sets
+            cardContent += this.createSetsDisplay(game.sets);
+            cardContent += `<div class="match-result">${this.getMatchResult(game.sets)}</div>`;
+        } else if (isCurrent) {
+            // Show set input form
+            cardContent += this.createSetInputForm(game);
+        }
+
+        cardContent += '</div>';
+        return cardContent;
+    }
+
+    createPendingConfirmationCard(game) {
+        return `
+            <div class="game-card pending-confirmation">
+                <div class="game-header">
+                    <h3>Match ${game.matchNumber} - ${game.tournament}</h3>
+                    <span class="game-status status-pending">Pending Confirmation</span>
+                </div>
+                
+                <div class="teams">
+                    <div class="team team-a">
+                        <span class="team-name">${this.formatTeamName(game.team1)}</span>
+                        <span class="team-score">TEAM A</span>
+                    </div>
+                    <div class="team team-b">
+                        <span class="team-name">${this.formatTeamName(game.team2)}</span>
+                        <span class="team-score">TEAM B</span>
                     </div>
                 </div>
                 
-                ${scoreSection}
+                ${this.createSetsDisplay(game.sets)}
+                
+                <div class="confirmation-actions">
+                    <button class="btn-edit" onclick="tournamentManager.editGame(${game.id})">
+                        <i class="fas fa-edit"></i> Edit Scores
+                    </button>
+                    <button class="btn-confirm" onclick="tournamentManager.confirmGame(${game.id})">
+                        <i class="fas fa-check"></i> Confirm Game
+                    </button>
+                </div>
             </div>
         `;
     }
 
-    // Helper functions for set management
-    calculateSetScores(sets) {
-        let teamASets = 0;
-        let teamBSets = 0;
-        
-        sets.forEach(set => {
-            if (set.teamAScore && set.teamBScore) {
-                if (parseInt(set.teamAScore) > parseInt(set.teamBScore)) {
-                    teamASets++;
-                } else {
-                    teamBSets++;
-                }
+    createSetsDisplay(sets) {
+        let setsHtml = '<div class="sets-display">';
+        sets.forEach((set, index) => {
+            if (set.teamAScore !== '' && set.teamBScore !== '') {
+                setsHtml += `
+                    <div class="set-row">
+                        <span class="set-label">SET ${index + 1}</span>
+                        <span class="set-score">${set.teamAScore} - ${set.teamBScore}</span>
+                    </div>
+                `;
             }
         });
-        
-        return { teamA: teamASets, teamB: teamBSets };
+        setsHtml += '</div>';
+        return setsHtml;
     }
 
-    getMatchStatus(sets) {
-        const scores = this.calculateSetScores(sets);
-        if (scores.teamA === 2) return 'teamA_wins';
-        if (scores.teamB === 2) return 'teamB_wins';
-        return 'in_progress';
-    }
-
-    shouldShowSet3(sets) {
-        const scores = this.calculateSetScores(sets);
-        return scores.teamA === 1 && scores.teamB === 1;
-    }
-
-    getNextSetToFill(sets) {
-        for (let i = 0; i < sets.length; i++) {
-            if (!sets[i].teamAScore || !sets[i].teamBScore) {
-                return i + 1;
-            }
-        }
-        return 3; // All sets filled
-    }
-
-    getSetScore(sets, setIndex, team) {
-        if (sets[setIndex] && sets[setIndex][`team${team}Score`]) {
-            return sets[setIndex][`team${team}Score`];
-        }
-        return '';
-    }
-
-    getWinner(sets) {
-        const scores = this.calculateSetScores(sets);
-        if (scores.teamA > scores.teamB) return 'Team A';
-        return 'Team B';
-    }
-
-    validateSetScore(scoreA, scoreB, setNumber) {
-        const maxPoints = setNumber === 3 ? 15 : 21;
-        
-        // Check if scores are valid
-        if (!scoreA || !scoreB) {
-            return { valid: false, message: 'Both scores must be entered' };
-        }
-        
-        const scoreAInt = parseInt(scoreA);
-        const scoreBInt = parseInt(scoreB);
-        
-        if (scoreAInt < 0 || scoreBInt < 0) {
-            return { valid: false, message: 'Scores cannot be negative' };
-        }
-        
-        // Check if one team reached the winning score
-        if (scoreAInt >= maxPoints || scoreBInt >= maxPoints) {
-            // Check for 2-point advantage rule
-            const difference = Math.abs(scoreAInt - scoreBInt);
-            if (difference >= 2) {
-                return { valid: true, message: 'Valid set score' };
-            } else {
-                return { valid: false, message: `Set ${setNumber} requires a 2-point advantage to win` };
-            }
-        }
-        
-        return { valid: true, message: 'Valid set score' };
-    }
-
-    async submitSetScore(gameId, setNumber) {
-        try {
-            const scoreA = document.getElementById(`set${setNumber}_scoreA_${gameId}`).value;
-            const scoreB = document.getElementById(`set${setNumber}_scoreB_${gameId}`).value;
-            
-            // Validate the set score
-            const validation = this.validateSetScore(scoreA, scoreB, setNumber);
-            if (!validation.valid) {
-                alert(validation.message);
-                return;
-            }
-            
-            // Find the game and update the set
-            const game = this.games.find(g => g.id === gameId);
-            if (game) {
-                const setIndex = setNumber - 1;
-                game.sets[setIndex].teamAScore = scoreA;
-                game.sets[setIndex].teamBScore = scoreB;
+    createSetInputForm(game) {
+        return `
+            <div class="set-input-form">
+                <h4>Enter Set Scores</h4>
+                <div class="set-input-group">
+                    <label>SET 1</label>
+                    <div class="set-inputs">
+                        <input type="number" id="set1_scoreA_${game.id}" placeholder="Team A" min="0" max="30">
+                        <span class="set-separator">-</span>
+                        <input type="number" id="set1_scoreB_${game.id}" placeholder="Team B" min="0" max="30">
+                    </div>
+                </div>
                 
-                // Check if match is finished
-                const matchStatus = this.getMatchStatus(game.sets);
-                if (matchStatus !== 'in_progress') {
-                    game.status = 'finished';
-                }
+                <div class="set-input-group">
+                    <label>SET 2</label>
+                    <div class="set-inputs">
+                        <input type="number" id="set2_scoreA_${game.id}" placeholder="Team A" min="0" max="30">
+                        <span class="set-separator">-</span>
+                        <input type="number" id="set2_scoreB_${game.id}" placeholder="Team B" min="0" max="30">
+                    </div>
+                </div>
                 
-                // Re-categorize and re-render
-                this.categorizeGames();
-                this.renderGames();
+                <div class="set-input-group" id="set3_group_${game.id}" style="display: none;">
+                    <label>SET 3 (if needed)</label>
+                    <div class="set-inputs">
+                        <input type="number" id="set3_scoreA_${game.id}" placeholder="Team A" min="0" max="20">
+                        <span class="set-separator">-</span>
+                        <input type="number" id="set3_scoreB_${game.id}" placeholder="Team B" min="0" max="20">
+                    </div>
+                </div>
                 
-                // In a real implementation, you'd save this to Google Sheets
-                if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
-                    await this.updateGoogleSheets(gameId, setNumber, scoreA, scoreB);
-                }
-                
-                alert(`Set ${setNumber} score updated successfully!`);
-            }
-            
-        } catch (error) {
-            this.showError('Failed to update set score: ' + error.message);
+                <button class="submit-score" onclick="tournamentManager.finishGame(${game.id})">
+                    <i class="fas fa-flag-checkered"></i> Finish Game
+                </button>
+            </div>
+        `;
+    }
+
+    formatTeamName(teamName) {
+        // Extract last names from team name (e.g., "Team 1 Gruppe A" -> "Team 1")
+        const parts = teamName.split(' ');
+        if (parts.length >= 2) {
+            return `${parts[0]} ${parts[1]}`;
+        }
+        return teamName;
+    }
+
+    getStatusText(status) {
+        switch (status) {
+            case 'current': return 'In Progress';
+            case 'scheduled': return 'Scheduled';
+            case 'finished': return 'Finished';
+            case 'pending_confirmation': return 'Pending Confirmation';
+            default: return status;
         }
     }
 
-    async submitScore(gameId) {
-        // Legacy function - now redirects to set-based scoring
-        this.submitSetScore(gameId, this.getNextSetToFill(this.games.find(g => g.id === gameId).sets));
-    }
-
-    async updateGoogleSheets(gameId, setNumber, scoreA, scoreB) {
-        // This would implement the actual Google Sheets update
-        // For now, just log the action
-        console.log(`Updating game ${gameId}, set ${setNumber} with scores: ${scoreA} - ${scoreB}`);
+    getMatchResult(sets) {
+        const teamAWins = sets.filter(set => 
+            set.teamAScore !== '' && set.teamBScore !== '' && 
+            parseInt(set.teamAScore) > parseInt(set.teamBScore)
+        ).length;
+        const teamBWins = sets.filter(set => 
+            set.teamAScore !== '' && set.teamBScore !== '' && 
+            parseInt(set.teamBScore) > parseInt(set.teamAScore)
+        ).length;
         
-        // In a real implementation, you'd use the Google Sheets API to update the specific row
-        // This requires more complex authentication and API calls
+        if (teamAWins > teamBWins) {
+            return `Team A wins ${teamAWins}-${teamBWins}`;
+        } else if (teamBWins > teamAWins) {
+            return `Team B wins ${teamBWins}-${teamAWins}`;
+        } else {
+            return 'Match tied';
+        }
     }
 
-    showLoading(show) {
-        const loadingEl = document.getElementById('loading');
-        loadingEl.style.display = show ? 'block' : 'none';
+    async finishGame(gameId) {
+        const game = this.games.find(g => g.id === gameId);
+        if (!game) return;
+
+        // Validate set scores
+        const set1A = document.getElementById(`set1_scoreA_${gameId}`).value;
+        const set1B = document.getElementById(`set1_scoreB_${gameId}`).value;
+        const set2A = document.getElementById(`set2_scoreA_${gameId}`).value;
+        const set2B = document.getElementById(`set2_scoreB_${gameId}`).value;
+        const set3A = document.getElementById(`set3_scoreA_${gameId}`).value;
+        const set3B = document.getElementById(`set3_scoreB_${gameId}`).value;
+
+        // Basic validation
+        if (!set1A || !set1B || !set2A || !set2B) {
+            alert('Please fill in at least the first two sets.');
+            return;
+        }
+
+        // Update game with scores
+        game.sets[0] = { teamAScore: set1A, teamBScore: set1B };
+        game.sets[1] = { teamAScore: set2A, teamBScore: set2B };
+        if (set3A && set3B) {
+            game.sets[2] = { teamAScore: set3A, teamBScore: set3B };
+        }
+
+        // Mark as user confirmed
+        game.userConfirmed = true;
+        game.status = 'pending_confirmation';
+
+        // Update display
+        this.categorizeGames();
+        this.renderGames();
+
+        // Update Google Sheets if configured
+        if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
+            await this.updateGoogleSheets(gameId);
+        }
+
+        alert('Game finished! Waiting for event manager confirmation.');
+    }
+
+    editGame(gameId) {
+        const game = this.games.find(g => g.id === gameId);
+        if (!game) return;
+
+        // Reset confirmation status
+        game.userConfirmed = false;
+        game.status = 'current';
+
+        // Update display
+        this.categorizeGames();
+        this.renderGames();
+
+        alert('Game reopened for editing.');
+    }
+
+    confirmGame(gameId) {
+        const game = this.games.find(g => g.id === gameId);
+        if (!game) return;
+
+        // Mark as event manager confirmed
+        game.eventManagerConfirmed = true;
+        game.status = 'finished';
+
+        // Update display
+        this.categorizeGames();
+        this.renderGames();
+
+        // Update Google Sheets if configured
+        if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
+            this.updateGoogleSheets(gameId);
+        }
+
+        alert('Game confirmed and closed!');
+    }
+
+    async updateGoogleSheets(gameId) {
+        const game = this.games.find(g => g.id === gameId);
+        if (!game) return;
+
+        // This is a placeholder - you'll need to implement the actual Google Sheets API call
+        console.log('Updating Google Sheets for game:', gameId, game);
+        
+        // Example of what you'd send to Google Sheets:
+        const updateData = {
+            matchNumber: game.matchNumber,
+            tournament: game.tournament,
+            gruppe: game.gruppe,
+            court: game.court,
+            startzeit: game.startzeit,
+            team1: game.team1,
+            team2: game.team2,
+            resultat: this.getMatchResult(game.sets),
+            dauer: game.dauer,
+            set1ScoreA: game.sets[0].teamAScore,
+            set1ScoreB: game.sets[0].teamBScore,
+            set2ScoreA: game.sets[1].teamAScore,
+            set2ScoreB: game.sets[1].teamBScore,
+            set3ScoreA: game.sets[2]?.teamAScore || '',
+            set3ScoreB: game.sets[2]?.teamBScore || ''
+        };
+        
+        console.log('Data to update:', updateData);
     }
 
     showError(message) {
-        const errorEl = document.getElementById('error');
-        errorEl.textContent = message;
-        errorEl.style.display = 'block';
-        
-        // Hide error after 5 seconds
-        setTimeout(() => {
-            errorEl.style.display = 'none';
-        }, 5000);
+        const errorDiv = document.getElementById('error');
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        console.error(message);
+    }
+
+    hideError() {
+        const errorDiv = document.getElementById('error');
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
     }
 }
 
-// Initialize the tournament manager when the page loads
+// Global tournament manager instance
 let tournamentManager;
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
     tournamentManager = new TournamentManager();
+    tournamentManager.init();
 });
 
-// Global function for the refresh button
+// Global refresh function
 function refreshData() {
     if (tournamentManager) {
+        tournamentManager.hideError();
         tournamentManager.loadTournamentData();
     }
 }
