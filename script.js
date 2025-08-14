@@ -34,6 +34,7 @@ class TournamentManager {
 
     loadDemoData() {
         this.games = [
+            // 9:45 AM - All 6 courts start simultaneously
             {
                 id: 1,
                 matchNumber: 1,
@@ -50,7 +51,7 @@ class TournamentManager {
                     { teamAScore: '', teamBScore: '' },
                     { teamAScore: '', teamBScore: '' }
                 ],
-                status: 'current',
+                status: 'scheduled',
                 userConfirmed: false,
                 eventManagerConfirmed: false
             },
@@ -153,6 +154,87 @@ class TournamentManager {
                 status: 'scheduled',
                 userConfirmed: false,
                 eventManagerConfirmed: false
+            },
+            // 10:30 AM - Next round (4 courts from game 15 onwards)
+            {
+                id: 7,
+                matchNumber: 7,
+                tournament: 'Men',
+                gruppe: 'A',
+                court: 'Court 1',
+                startzeit: '10:30',
+                team1: 'Team 7 Gruppe A',
+                team2: 'Team 10 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 8,
+                matchNumber: 8,
+                tournament: 'Men',
+                gruppe: 'A',
+                court: 'Court 2',
+                startzeit: '10:30',
+                team1: 'Team 2 Gruppe A',
+                team2: 'Team 15 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 9,
+                matchNumber: 9,
+                tournament: 'Men',
+                gruppe: 'B',
+                court: 'Court 3',
+                startzeit: '10:30',
+                team1: 'Team 1 Gruppe B',
+                team2: 'Team 8 Gruppe B',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
+            },
+            {
+                id: 10,
+                matchNumber: 10,
+                tournament: 'Women',
+                gruppe: 'A',
+                court: 'Court 4',
+                startzeit: '10:30',
+                team1: 'Team 5 Gruppe A',
+                team2: 'Team 12 Gruppe A',
+                resultat: '<->',
+                dauer: '0:00',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
+                status: 'scheduled',
+                userConfirmed: false,
+                eventManagerConfirmed: false
             }
         ];
         
@@ -204,12 +286,15 @@ class TournamentManager {
             }
         });
 
-        // Find the first unconfirmed game to make it current
-        const unconfirmedGame = this.games.find(g => !g.eventManagerConfirmed);
-        if (unconfirmedGame) {
-            unconfirmedGame.status = 'current';
-            console.log('Set game', unconfirmedGame.id, 'as current');
-        }
+        // Find all games that start at the same time (9:45) and make them current
+        const currentTimeGames = this.games.filter(g => 
+            !g.eventManagerConfirmed && g.startzeit === '9:45'
+        );
+        
+        currentTimeGames.forEach(game => {
+            game.status = 'current';
+            console.log('Set game', game.id, 'as current (starts at', game.startzeit, ')');
+        });
 
         // Update other games based on confirmation status
         this.games.forEach(game => {
@@ -218,13 +303,11 @@ class TournamentManager {
             } else if (game.userConfirmed && !game.eventManagerConfirmed) {
                 game.status = 'pending_confirmation';
             }
-            // Keep the first unconfirmed game as 'current'
-            // All others remain 'scheduled' until they're confirmed
         });
         
         console.log('Games after categorization:');
         this.games.forEach(game => {
-            console.log(`Game ${game.id}: ${game.status}`);
+            console.log(`Game ${game.id}: ${game.status} (starts at ${game.startzeit})`);
         });
     }
 
