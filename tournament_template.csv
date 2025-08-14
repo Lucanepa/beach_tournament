@@ -1,7 +1,7 @@
-Team A,Team B,Court,Time,Status,Score A,Score B,Date
-Beach Bombers,Sand Sharks,Court 1,10:00 AM,current,21,19,2024-01-15
-Volley Vikings,Sunset Spikers,Court 2,10:30 AM,current,18,21,2024-01-15
-Wave Warriors,Tide Titans,Court 1,11:00 AM,scheduled,,,2024-01-15
-Coastal Crushers,Ocean Outlaws,Court 2,11:30 AM,scheduled,,,2024-01-15
-Beach Bandits,Sand Storm,Court 1,9:00 AM,finished,21,15,2024-01-15
-Volley Vipers,Sunset Strikers,Court 2,9:30 AM,finished,19,21,2024-01-15
+Team A,Team B,Court,Time,Status,Set1_ScoreA,Set1_ScoreB,Set2_ScoreA,Set2_ScoreB,Set3_ScoreA,Set3_ScoreB,Date
+Beach Bombers,Sand Sharks,Court 1,10:00 AM,current,21,19,18,21,,,2024-01-15
+Volley Vikings,Sunset Spikers,Court 2,10:30 AM,current,21,18,,,,,2024-01-15
+Wave Warriors,Tide Titans,Court 1,11:00 AM,scheduled,,,,,,,2024-01-15
+Coastal Crushers,Ocean Outlaws,Court 2,11:30 AM,scheduled,,,,,,,2024-01-15
+Beach Bandits,Sand Storm,Court 1,9:00 AM,finished,21,15,21,18,,,2024-01-15
+Volley Vipers,Sunset Strikers,Court 2,9:30 AM,finished,19,21,18,21,,,2024-01-15

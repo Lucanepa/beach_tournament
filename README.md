@@ -33,15 +33,19 @@ Create a Google Sheet with the following columns:
 - **Court** - Court number/name
 - **Time** - Game time
 - **Status** - `scheduled`, `current`, or `finished`
-- **Score A** - Team A's score
-- **Score B** - Team B's score
+- **Set1_ScoreA** - Team A's score in Set 1
+- **Set1_ScoreB** - Team B's score in Set 1
+- **Set2_ScoreA** - Team A's score in Set 2
+- **Set2_ScoreB** - Team B's score in Set 2
+- **Set3_ScoreA** - Team A's score in Set 3 (if needed)
+- **Set3_ScoreB** - Team B's score in Set 3 (if needed)
 - **Date** - Tournament date
 
 Example:
 ```
-Team A        | Team B        | Court  | Time     | Status    | Score A | Score B | Date
-Beach Bombers | Sand Sharks   | Court 1| 10:00 AM | current   | 21      | 19      | 2024-01-15
-Wave Warriors | Tide Titans   | Court 2| 11:00 AM | scheduled |         |         | 2024-01-15
+Team A        | Team B        | Court  | Time     | Status    | Set1_A | Set1_B | Set2_A | Set2_B | Set3_A | Set3_B | Date
+Beach Bombers | Sand Sharks   | Court 1| 10:00 AM | current   | 21     | 19     | 18     | 21     |        |        | 2024-01-15
+Wave Warriors | Tide Titans   | Court 2| 11:00 AM | scheduled |        |        |        |        |        |        | 2024-01-15
 ```
 
 ### 2. Get Your Sheet ID
@@ -77,10 +81,13 @@ this.apiKey = 'YOUR_ACTUAL_API_KEY_HERE';
 
 ### Score Management
 
-- For current games, you can input scores for both teams
-- Scores are validated (must be positive numbers)
-- Games automatically move to "Finished" when scores are entered
-- In a full implementation, scores would sync back to Google Sheets
+- **Best of 3 Sets**: Each match consists of up to 3 sets
+- **Set 1 & 2**: First to 21 points with 2-point advantage
+- **Set 3**: First to 15 points with 2-point advantage (only if sets are tied 1-1)
+- **Set Validation**: System prevents invalid scores (e.g., 25-25 without 2-point advantage)
+- **Automatic Progression**: Games automatically move to "Finished" when a team wins 2 sets
+- **Clear Display**: Set scores are clearly shown beneath team names
+- **In a full implementation**, scores would sync back to Google Sheets
 
 ### Data Flow
 

@@ -204,6 +204,76 @@
             border-color: #ff6b6b;
         }
 
+        .set-input-group {
+            margin-bottom: 15px;
+        }
+
+        .set-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .set-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .set-separator {
+            font-weight: bold;
+            color: #6c757d;
+            font-size: 1.2rem;
+        }
+
+        .sets-display {
+            margin-bottom: 15px;
+        }
+
+        .set-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .set-label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .set-score {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .match-result {
+            text-align: center;
+            padding: 12px;
+            margin-top: 10px;
+            background: #28a745;
+            color: white;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .team-score {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+        }
+
         .submit-score {
             background: #28a745;
             color: white;
@@ -300,9 +370,14 @@
         </div>
         
         <div class="content">
-            <button class="refresh-btn" onclick="refreshData()">
-                <i class="fas fa-sync-alt"></i> Refresh Data
-            </button>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="refresh-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+                <a href="tableau.html" class="refresh-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
+                    <i class="fas fa-trophy"></i> View Tournament Bracket
+                </a>
+            </div>
             
             <div id="loading" class="loading">
                 <i class="fas fa-spinner"></i>

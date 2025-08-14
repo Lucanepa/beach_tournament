@@ -119,9 +119,12 @@ class TournamentManager {
                     court: row[2] || 'Court 1',
                     time: row[3] || '10:00 AM',
                     status: row[4] || 'scheduled', // scheduled, current, finished
-                    scoreA: row[5] || '',
-                    scoreB: row[6] || '',
-                    date: row[7] || new Date().toLocaleDateString()
+                    sets: [
+                        { teamAScore: row[5] || '', teamBScore: row[6] || '' },
+                        { teamAScore: row[7] || '', teamBScore: row[8] || '' },
+                        { teamAScore: row[9] || '', teamBScore: row[10] || '' }
+                    ],
+                    date: row[11] || new Date().toLocaleDateString()
                 };
                 this.games.push(game);
             }
@@ -138,8 +141,11 @@ class TournamentManager {
                 court: 'Court 1',
                 time: '10:00 AM',
                 status: 'current',
-                scoreA: '21',
-                scoreB: '19',
+                sets: [
+                    { teamAScore: 21, teamBScore: 19 },
+                    { teamAScore: 18, teamBScore: 21 },
+                    { teamAScore: '', teamBScore: '' }
+                ],
                 date: '2024-01-15'
             },
             {
@@ -149,8 +155,11 @@ class TournamentManager {
                 court: 'Court 2',
                 time: '10:30 AM',
                 status: 'current',
-                scoreA: '18',
-                scoreB: '21',
+                sets: [
+                    { teamAScore: 21, teamBScore: 18 },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
                 date: '2024-01-15'
             },
             {
@@ -160,8 +169,11 @@ class TournamentManager {
                 court: 'Court 1',
                 time: '11:00 AM',
                 status: 'scheduled',
-                scoreA: '',
-                scoreB: '',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
                 date: '2024-01-15'
             },
             {
@@ -171,8 +183,11 @@ class TournamentManager {
                 court: 'Court 2',
                 time: '11:30 AM',
                 status: 'scheduled',
-                scoreA: '',
-                scoreB: '',
+                sets: [
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' },
+                    { teamAScore: '', teamBScore: '' }
+                ],
                 date: '2024-01-15'
             },
             {
@@ -182,8 +197,10 @@ class TournamentManager {
                 court: 'Court 1',
                 time: '9:00 AM',
                 status: 'finished',
-                scoreA: '21',
-                scoreB: '15',
+                sets: [
+                    { teamAScore: 21, teamBScore: 15 },
+                    { teamAScore: 21, teamBScore: 18 }
+                ],
                 date: '2024-01-15'
             },
             {
@@ -193,8 +210,10 @@ class TournamentManager {
                 court: 'Court 2',
                 time: '9:30 AM',
                 status: 'finished',
-                scoreA: '19',
-                scoreB: '21',
+                sets: [
+                    { teamAScore: 19, teamBScore: 21 },
+                    { teamAScore: 18, teamBScore: 21 }
+                ],
                 date: '2024-01-15'
             }
         ];
@@ -228,37 +247,66 @@ class TournamentManager {
         const statusText = status === 'current' ? 'LIVE' : 
                           status === 'next' ? 'NEXT' : 'FINISHED';
         
+        // Calculate set scores and match status
+        const setScores = this.calculateSetScores(game.sets);
+        const matchStatus = this.getMatchStatus(game.sets);
+        
         let scoreSection = '';
         if (status === 'finished') {
             scoreSection = `
-                <div class="game-info">
-                    <div class="info-item">
-                        <strong>Final Score</strong>
-                        <div>${game.scoreA} - ${game.scoreB}</div>
+                <div class="sets-display">
+                    <div class="set-row">
+                        <span class="set-label">Set 1:</span>
+                        <span class="set-score">${game.sets[0].teamAScore} - ${game.sets[0].teamBScore}</span>
                     </div>
-                    <div class="info-item">
-                        <strong>Winner</strong>
-                        <div>${parseInt(game.scoreA) > parseInt(game.scoreB) ? game.teamA : game.teamB}</div>
+                    <div class="set-row">
+                        <span class="set-label">Set 2:</span>
+                        <span class="set-score">${game.sets[1].teamAScore} - ${game.sets[1].teamBScore}</span>
+                    </div>
+                    ${game.sets[2] && game.sets[2].teamAScore && game.sets[2].teamBScore ? 
+                        `<div class="set-row">
+                            <span class="set-label">Set 3:</span>
+                            <span class="set-score">${game.sets[2].teamAScore} - ${game.sets[2].teamBScore}</span>
+                        </div>` : ''
+                    }
+                    <div class="match-result">
+                        <strong>Winner: ${this.getWinner(game.sets)}</strong>
                     </div>
                 </div>
             `;
         } else if (status === 'current') {
             scoreSection = `
-                <div class="game-info">
-                    <div class="info-item">
-                        <strong>Current Score</strong>
-                        <div>${game.scoreA || '0'} - ${game.scoreB || '0'}</div>
+                <div class="sets-display">
+                    <div class="set-row">
+                        <span class="set-label">Set 1:</span>
+                        <span class="set-score">${game.sets[0].teamAScore || '0'} - ${game.sets[0].teamBScore || '0'}</span>
                     </div>
-                    <div class="info-item">
-                        <strong>Status</strong>
-                        <div>In Progress</div>
+                    <div class="set-row">
+                        <span class="set-label">Set 2:</span>
+                        <span class="set-score">${game.sets[1].teamAScore || '0'} - ${game.sets[1].teamBScore || '0'}</span>
                     </div>
+                    ${this.shouldShowSet3(game.sets) ? 
+                        `<div class="set-row">
+                            <span class="set-label">Set 3:</span>
+                            <span class="set-score">${game.sets[2].teamAScore || '0'} - ${game.sets[2].teamBScore || '0'}</span>
+                        </div>` : ''
+                    }
                 </div>
                 <div class="score-input">
-                    <input type="number" id="scoreA_${game.id}" placeholder="Team A Score" min="0" max="30" value="${game.scoreA || ''}">
-                    <input type="number" id="scoreB_${game.id}" placeholder="Team B Score" min="0" max="30" value="${game.scoreB || ''}">
-                    <button class="submit-score" onclick="tournamentManager.submitScore(${game.id})">
-                        <i class="fas fa-save"></i> Update Score
+                    <div class="set-input-group">
+                        <label>Set ${this.getNextSetToFill(game.sets)}:</label>
+                        <div class="set-inputs">
+                            <input type="number" id="set${this.getNextSetToFill(game.sets)}_scoreA_${game.id}" 
+                                   placeholder="Team A" min="0" max="30" 
+                                   value="${this.getSetScore(game.sets, this.getNextSetToFill(game.sets) - 1, 'A')}">
+                            <span class="set-separator">-</span>
+                            <input type="number" id="set${this.getNextSetToFill(game.sets)}_scoreB_${game.id}" 
+                                   placeholder="Team B" min="0" max="30" 
+                                   value="${this.getSetScore(game.sets, this.getNextSetToFill(game.sets) - 1, 'B')}">
+                        </div>
+                    </div>
+                    <button class="submit-score" onclick="tournamentManager.submitSetScore(${game.id}, ${this.getNextSetToFill(game.sets)})">
+                        <i class="fas fa-save"></i> Update Set ${this.getNextSetToFill(game.sets)}
                     </button>
                 </div>
             `;
@@ -287,11 +335,11 @@ class TournamentManager {
                 <div class="teams">
                     <div class="team team-a">
                         <span>${game.teamA}</span>
-                        <span>Team A</span>
+                        <span class="team-score">${setScores.teamA}</span>
                     </div>
                     <div class="team team-b">
                         <span>${game.teamB}</span>
-                        <span>Team B</span>
+                        <span class="team-score">${setScores.teamB}</span>
                     </div>
                 </div>
                 
@@ -311,29 +359,109 @@ class TournamentManager {
         `;
     }
 
-    async submitScore(gameId) {
+    // Helper functions for set management
+    calculateSetScores(sets) {
+        let teamASets = 0;
+        let teamBSets = 0;
+        
+        sets.forEach(set => {
+            if (set.teamAScore && set.teamBScore) {
+                if (parseInt(set.teamAScore) > parseInt(set.teamBScore)) {
+                    teamASets++;
+                } else {
+                    teamBSets++;
+                }
+            }
+        });
+        
+        return { teamA: teamASets, teamB: teamBSets };
+    }
+
+    getMatchStatus(sets) {
+        const scores = this.calculateSetScores(sets);
+        if (scores.teamA === 2) return 'teamA_wins';
+        if (scores.teamB === 2) return 'teamB_wins';
+        return 'in_progress';
+    }
+
+    shouldShowSet3(sets) {
+        const scores = this.calculateSetScores(sets);
+        return scores.teamA === 1 && scores.teamB === 1;
+    }
+
+    getNextSetToFill(sets) {
+        for (let i = 0; i < sets.length; i++) {
+            if (!sets[i].teamAScore || !sets[i].teamBScore) {
+                return i + 1;
+            }
+        }
+        return 3; // All sets filled
+    }
+
+    getSetScore(sets, setIndex, team) {
+        if (sets[setIndex] && sets[setIndex][`team${team}Score`]) {
+            return sets[setIndex][`team${team}Score`];
+        }
+        return '';
+    }
+
+    getWinner(sets) {
+        const scores = this.calculateSetScores(sets);
+        if (scores.teamA > scores.teamB) return 'Team A';
+        return 'Team B';
+    }
+
+    validateSetScore(scoreA, scoreB, setNumber) {
+        const maxPoints = setNumber === 3 ? 15 : 21;
+        
+        // Check if scores are valid
+        if (!scoreA || !scoreB) {
+            return { valid: false, message: 'Both scores must be entered' };
+        }
+        
+        const scoreAInt = parseInt(scoreA);
+        const scoreBInt = parseInt(scoreB);
+        
+        if (scoreAInt < 0 || scoreBInt < 0) {
+            return { valid: false, message: 'Scores cannot be negative' };
+        }
+        
+        // Check if one team reached the winning score
+        if (scoreAInt >= maxPoints || scoreBInt >= maxPoints) {
+            // Check for 2-point advantage rule
+            const difference = Math.abs(scoreAInt - scoreBInt);
+            if (difference >= 2) {
+                return { valid: true, message: 'Valid set score' };
+            } else {
+                return { valid: false, message: `Set ${setNumber} requires a 2-point advantage to win` };
+            }
+        }
+        
+        return { valid: true, message: 'Valid set score' };
+    }
+
+    async submitSetScore(gameId, setNumber) {
         try {
-            const scoreA = document.getElementById(`scoreA_${gameId}`).value;
-            const scoreB = document.getElementById(`scoreB_${gameId}`).value;
+            const scoreA = document.getElementById(`set${setNumber}_scoreA_${gameId}`).value;
+            const scoreB = document.getElementById(`set${setNumber}_scoreB_${gameId}`).value;
             
-            if (!scoreA || !scoreB) {
-                alert('Please enter scores for both teams');
+            // Validate the set score
+            const validation = this.validateSetScore(scoreA, scoreB, setNumber);
+            if (!validation.valid) {
+                alert(validation.message);
                 return;
             }
             
-            if (parseInt(scoreA) < 0 || parseInt(scoreB) < 0) {
-                alert('Scores cannot be negative');
-                return;
-            }
-            
-            // Find the game and update it
+            // Find the game and update the set
             const game = this.games.find(g => g.id === gameId);
             if (game) {
-                game.scoreA = scoreA;
-                game.scoreB = scoreB;
+                const setIndex = setNumber - 1;
+                game.sets[setIndex].teamAScore = scoreA;
+                game.sets[setIndex].teamBScore = scoreB;
                 
-                // If both scores are entered, mark as finished
-                if (parseInt(scoreA) >= 21 || parseInt(scoreB) >= 21) {
+                // Check if match is finished
+                const matchStatus = this.getMatchStatus(game.sets);
+                if (matchStatus !== 'in_progress') {
                     game.status = 'finished';
                 }
                 
@@ -343,21 +471,26 @@ class TournamentManager {
                 
                 // In a real implementation, you'd save this to Google Sheets
                 if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
-                    await this.updateGoogleSheets(gameId, scoreA, scoreB);
+                    await this.updateGoogleSheets(gameId, setNumber, scoreA, scoreB);
                 }
                 
-                alert('Score updated successfully!');
+                alert(`Set ${setNumber} score updated successfully!`);
             }
             
         } catch (error) {
-            this.showError('Failed to update score: ' + error.message);
+            this.showError('Failed to update set score: ' + error.message);
         }
     }
 
-    async updateGoogleSheets(gameId, scoreA, scoreB) {
+    async submitScore(gameId) {
+        // Legacy function - now redirects to set-based scoring
+        this.submitSetScore(gameId, this.getNextSetToFill(this.games.find(g => g.id === gameId).sets));
+    }
+
+    async updateGoogleSheets(gameId, setNumber, scoreA, scoreB) {
         // This would implement the actual Google Sheets update
         // For now, just log the action
-        console.log(`Updating game ${gameId} with scores: ${scoreA} - ${scoreB}`);
+        console.log(`Updating game ${gameId}, set ${setNumber} with scores: ${scoreA} - ${scoreB}`);
         
         // In a real implementation, you'd use the Google Sheets API to update the specific row
         // This requires more complex authentication and API calls
@@ -393,3 +526,4 @@ function refreshData() {
         tournamentManager.loadTournamentData();
     }
 }
+
