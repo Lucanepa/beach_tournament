@@ -80,10 +80,11 @@
 
         .game-card {
             background: white;
+            border: 2px solid #dee2e6;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            border: 2px solid #e9ecef;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
         }
 
@@ -95,37 +96,138 @@
 
         .game-card.current {
             border-color: #28a745;
-            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            background: linear-gradient(135deg, #f8fff9 0%, #ffffff 100%);
         }
 
-        .game-card.next {
+        .game-card.scheduled {
             border-color: #ffc107;
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            background: linear-gradient(135deg, #fffdf8 0%, #ffffff 100%);
         }
 
         .game-card.finished {
             border-color: #6c757d;
-            background: linear-gradient(135deg, #e9ecef, #dee2e6);
-            opacity: 0.8;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
         }
 
         .game-card.pending-confirmation {
-            border-color: #ffc107;
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-color: #fd7e14;
+            background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
         }
 
-        .set-input-form {
-            margin-top: 15px;
-            padding: 15px;
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .game-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-current {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-scheduled {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .status-finished {
+            background: #6c757d;
+            color: white;
+        }
+
+        .status-pending {
+            background: #fd7e14;
+            color: white;
+        }
+
+        .teams {
+            margin-bottom: 15px;
+        }
+
+        .team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
             background: #f8f9fa;
             border-radius: 8px;
-            border: 1px solid #dee2e6;
+            font-weight: 500;
         }
 
-        .set-input-form h4 {
-            margin-bottom: 15px;
-            color: #495057;
+        .team.team-a {
+            border-left: 4px solid #007bff;
+        }
+
+        .team.team-b {
+            border-left: 4px solid #dc3545;
+        }
+
+        .team-score {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            min-width: 30px;
             text-align: center;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 8px;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .info-item strong {
+            display: block;
+            color: #495057;
+            margin-bottom: 3px;
+        }
+
+        .sets-display {
+            margin-bottom: 15px;
+        }
+
+        .set-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .set-label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .set-score {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2c3e50;
         }
 
         .confirmation-actions {
@@ -162,104 +264,11 @@
             background: #218838;
         }
 
-        .status-pending {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .game-status {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .status-current {
-            background: #28a745;
-            color: white;
-        }
-
-        .status-next {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .status-finished {
-            background: #6c757d;
-            color: white;
-        }
-
-        .teams {
-            margin-bottom: 15px;
-        }
-
-        .team {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            margin: 5px 0;
+        .set-input-form {
             background: #f8f9fa;
+            padding: 15px;
             border-radius: 8px;
-            font-weight: 500;
-        }
-
-        .team.team-a {
-            border-left: 4px solid #007bff;
-        }
-
-        .team.team-b {
-            border-left: 4px solid #dc3545;
-        }
-
-        .game-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .info-item {
-            text-align: center;
-            padding: 8px;
-            background: #e9ecef;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-
-        .info-item strong {
-            display: block;
-            color: #495057;
-            margin-bottom: 3px;
-        }
-
-        .score-input {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
             margin-top: 15px;
-        }
-
-        .score-input input {
-            padding: 8px;
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
-
-        .score-input input:focus {
-            outline: none;
-            border-color: #ff6b6b;
         }
 
         .set-input-group {
@@ -268,8 +277,8 @@
 
         .set-input-group label {
             display: block;
-            margin-bottom: 8px;
             font-weight: bold;
+            margin-bottom: 8px;
             color: #495057;
         }
 
@@ -277,71 +286,49 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .set-inputs input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 16px;
         }
 
         .set-separator {
             font-weight: bold;
             color: #6c757d;
-            font-size: 1.2rem;
         }
 
-        .sets-display {
-            margin-bottom: 15px;
-        }
-
-        .set-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            margin: 5px 0;
-            background: #e9ecef;
-            border-radius: 6px;
-            font-weight: 500;
-        }
-
-        .set-label {
-            font-weight: bold;
-            color: #495057;
-        }
-
-        .set-score {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .match-result {
-            text-align: center;
-            padding: 12px;
-            margin-top: 10px;
-            background: #28a745;
+        .btn-close-set {
+            background: #17a2b8;
             color: white;
-            border-radius: 6px;
-            font-weight: bold;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
         }
 
-        .team-score {
-            background: #007bff;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            min-width: 30px;
-            text-align: center;
+        .btn-close-set:hover {
+            background: #138496;
         }
 
         .submit-score {
             background: #28a745;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 6px;
             cursor: pointer;
+            font-size: 16px;
             font-weight: bold;
-            transition: background 0.3s ease;
-            grid-column: 1 / -1;
+            width: 100%;
+            margin-top: 15px;
         }
 
         .submit-score:hover {

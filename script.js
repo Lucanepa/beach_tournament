@@ -473,39 +473,67 @@ class TournamentManager {
     }
 
     createSetInputForm(game) {
+        const set1Complete = game.sets[0].teamAScore !== '' && game.sets[0].teamBScore !== '';
+        const set2Complete = game.sets[1].teamAScore !== '' && game.sets[1].teamBScore !== '';
+        const set3Complete = game.sets[2].teamAScore !== '' && game.sets[2].teamBScore !== '';
+        
+        // Determine if Set 3 should be shown
+        const shouldShowSet3 = set1Complete && set2Complete && 
+                              this.shouldShowSet3(game.sets[0], game.sets[1]);
+        
         return `
             <div class="set-input-form">
                 <h4>Enter Set Scores</h4>
+                
                 <div class="set-input-group">
                     <label>SET 1</label>
                     <div class="set-inputs">
-                        <input type="number" id="set1_scoreA_${game.id}" placeholder="Team A" min="0" max="30">
+                        <input type="number" id="set1_scoreA_${game.id}" placeholder="Team A" min="0" max="30" 
+                               value="${game.sets[0].teamAScore}" ${set1Complete ? 'readonly' : ''}>
                         <span class="set-separator">-</span>
-                        <input type="number" id="set1_scoreB_${game.id}" placeholder="Team B" min="0" max="30">
+                        <input type="number" id="set1_scoreB_${game.id}" placeholder="Team B" min="0" max="30"
+                               value="${game.sets[0].teamBScore}" ${set1Complete ? 'readonly' : ''}>
                     </div>
+                    ${!set1Complete ? `<button class="btn-close-set" onclick="tournamentManager.closeSet(${game.id}, 1)">
+                        <i class="fas fa-lock"></i> Close Set 1
+                    </button>` : ''}
                 </div>
                 
                 <div class="set-input-group">
                     <label>SET 2</label>
                     <div class="set-inputs">
-                        <input type="number" id="set2_scoreA_${game.id}" placeholder="Team A" min="0" max="30">
+                        <input type="number" id="set2_scoreA_${game.id}" placeholder="Team A" min="0" max="30"
+                               value="${game.sets[1].teamAScore}" ${set2Complete ? 'readonly' : ''}>
                         <span class="set-separator">-</span>
-                        <input type="number" id="set2_scoreB_${game.id}" placeholder="Team B" min="0" max="30">
+                        <input type="number" id="set2_scoreB_${game.id}" placeholder="Team B" min="0" max="30"
+                               value="${game.sets[1].teamBScore}" ${set2Complete ? 'readonly' : ''}>
                     </div>
+                    ${!set2Complete ? `<button class="btn-close-set" onclick="tournamentManager.closeSet(${game.id}, 2)">
+                        <i class="fas fa-lock"></i> Close Set 2
+                    </button>` : ''}
                 </div>
                 
-                <div class="set-input-group" id="set3_group_${game.id}" style="display: none;">
-                    <label>SET 3 (if needed)</label>
+                ${shouldShowSet3 ? `
+                <div class="set-input-group" id="set3_group_${game.id}">
+                    <label>SET 3 (15 points, 2-point advantage)</label>
                     <div class="set-inputs">
-                        <input type="number" id="set3_scoreA_${game.id}" placeholder="Team A" min="0" max="20">
+                        <input type="number" id="set3_scoreA_${game.id}" placeholder="Team A" min="0" max="20"
+                               value="${game.sets[2].teamAScore}" ${set3Complete ? 'readonly' : ''}>
                         <span class="set-separator">-</span>
-                        <input type="number" id="set3_scoreB_${game.id}" placeholder="Team B" min="0" max="20">
+                        <input type="number" id="set3_scoreB_${game.id}" placeholder="Team B" min="0" max="20"
+                               value="${game.sets[2].teamBScore}" ${set3Complete ? 'readonly' : ''}>
                     </div>
+                    ${!set3Complete ? `<button class="btn-close-set" onclick="tournamentManager.closeSet(${game.id}, 3)">
+                        <i class="fas fa-lock"></i> Close Set 3
+                    </button>` : ''}
                 </div>
+                ` : ''}
                 
+                ${this.canFinishGame(game) ? `
                 <button class="submit-score" onclick="tournamentManager.finishGame(${game.id})">
                     <i class="fas fa-flag-checkered"></i> Finish Game
                 </button>
+                ` : ''}
             </div>
         `;
     }
@@ -681,6 +709,72 @@ class TournamentManager {
         if (loadingDiv) {
             loadingDiv.style.display = 'block';
         }
+    }
+
+    // New methods for set progression
+    shouldShowSet3(set1, set2) {
+        // Set 3 is shown if sets are tied 1-1
+        const teamAWins = (parseInt(set1.teamAScore) > parseInt(set1.teamBScore) ? 1 : 0) + 
+                          (parseInt(set2.teamAScore) > parseInt(set2.teamBScore) ? 1 : 0);
+        const teamBWins = (parseInt(set1.teamBScore) > parseInt(set1.teamAScore) ? 1 : 0) + 
+                          (parseInt(set2.teamBScore) > parseInt(set2.teamAScore) ? 1 : 0);
+        
+        return teamAWins === 1 && teamBWins === 1;
+    }
+
+    canFinishGame(game) {
+        // Game can be finished if at least 2 sets are completed and scores are valid
+        const completedSets = game.sets.filter(set => set.teamAScore !== '' && set.teamBScore !== '');
+        return completedSets.length >= 2;
+    }
+
+    async closeSet(gameId, setNumber) {
+        const game = this.games.find(g => g.id === gameId);
+        if (!game) return;
+
+        const setIndex = setNumber - 1;
+        const scoreA = document.getElementById(`set${setNumber}_scoreA_${gameId}`).value;
+        const scoreB = document.getElementById(`set${setNumber}_scoreB_${gameId}`).value;
+        
+        if (scoreA === '' || scoreB === '') {
+            alert('Please enter scores for this set first.');
+            return;
+        }
+
+        // Validate the set score
+        if (!this.validateSetScore(parseInt(scoreA), parseInt(scoreB), setNumber === 3 ? 15 : 21)) {
+            return;
+        }
+
+        // Save the set scores
+        game.sets[setIndex].teamAScore = scoreA;
+        game.sets[setIndex].teamBScore = scoreB;
+
+        // Re-render the form to update the display
+        this.renderGames();
+
+        // Update Google Sheets if configured
+        if (this.googleSheetsId && this.googleSheetsId !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
+            await this.updateGoogleSheets(gameId);
+        }
+
+        alert(`Set ${setNumber} closed successfully!`);
+    }
+
+    validateSetScore(scoreA, scoreB, maxScore) {
+        if (scoreA < 0 || scoreB < 0) {
+            alert('Scores cannot be negative.');
+            return false;
+        }
+        if (scoreA > maxScore || scoreB > maxScore) {
+            alert(`Scores cannot exceed ${maxScore}.`);
+            return false;
+        }
+        if (scoreA === scoreB) {
+            alert('Scores cannot be tied. Beach volleyball requires a 2-point advantage.');
+            return false;
+        }
+        return true;
     }
 }
 
