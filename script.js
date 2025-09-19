@@ -8,13 +8,15 @@ class TournamentManager {
         this.courts = [];
         this.lastModified = null;
         this.refreshInterval = null;
+        this.currentTournament = 'men'; // 'men' or 'women'
+        this.menData = { teams: [], matches: [], courts: [] };
+        this.womenData = { teams: [], matches: [], courts: [] };
     }
 
     // Initialize the tournament data
     async init() {
         try {
             await this.loadExcelData();
-            console.log(`✅ Loaded ${this.teams.length} teams, ${this.matches.length} matches, ${this.courts.length} courts`);
             this.updateLastUpdatedTime();
             this.startAutoRefresh();
         } catch (error) {
@@ -30,11 +32,9 @@ class TournamentManager {
             try {
                 await this.checkForUpdates();
             } catch (error) {
-                console.log('Auto-refresh check failed:', error);
             }
         }, 5000);
         
-        console.log('🔄 Auto-refresh started (checking every 5 seconds)');
     }
 
     // Stop auto-refresh
@@ -42,26 +42,34 @@ class TournamentManager {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
-            console.log('⏹️ Auto-refresh stopped');
         }
     }
 
     // Check if Excel file has been updated
     async checkForUpdates() {
         try {
-            const file = '2025.09.20 Spielplan B2 M Turnier Kloten.xlsx';
-            const response = await fetch(file, { method: 'HEAD' });
+            // Check both tournament files
+            const files = ['b2m.xlsx', 'b3f.xlsx'];
+            let hasUpdates = false;
             
-            if (response.ok) {
-                const lastModified = response.headers.get('Last-Modified');
+            for (const file of files) {
+                const response = await fetch(file, { method: 'HEAD' });
                 
-                if (this.lastModified && lastModified !== this.lastModified) {
-                    console.log('📝 Excel file updated! Reloading data...');
-                    await this.loadExcelData();
-                    this.refreshDisplay();
+                if (response.ok) {
+                    const lastModified = response.headers.get('Last-Modified');
+                    const key = `lastModified_${file}`;
+                    
+                    if (this[key] && lastModified !== this[key]) {
+                        hasUpdates = true;
+                    }
+                    
+                    this[key] = lastModified;
                 }
-                
-                this.lastModified = lastModified;
+            }
+            
+            if (hasUpdates) {
+                await this.loadExcelData();
+                this.refreshDisplay();
             }
         } catch (error) {
             // File might not be accessible, ignore silently
@@ -86,7 +94,6 @@ class TournamentManager {
         });
         document.dispatchEvent(event);
         
-        console.log('🔄 Display refreshed with new data');
     }
 
     // Update the last updated timestamp
@@ -168,33 +175,20 @@ class TournamentManager {
     // Load data directly from Excel file
     async loadExcelData() {
         try {
-            console.log('Loading data from Excel file...');
             
             // Load SheetJS library if not already loaded
             if (typeof XLSX === 'undefined') {
                 await this.loadSheetJS();
             }
             
-            // Read the Excel file
-            const file = '2025.09.20 Spielplan B2 M Turnier Kloten.xlsx';
-            const response = await fetch(file);
-            const arrayBuffer = await response.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            // Load men's tournament data
+            await this.loadTournamentData('men', 'b2m.xlsx');
             
-            // Load teams from Anmeldung sheet
-            if (workbook.Sheets['Anmeldung']) {
-                this.teams = this.parseTeamsFromSheet(workbook.Sheets['Anmeldung']);
-                console.log(`✅ Loaded ${this.teams.length} teams from Anmeldung sheet`);
-            }
+            // Load women's tournament data
+            await this.loadTournamentData('women', 'b3f.xlsx');
             
-            // Load matches from Resultate sheet
-            if (workbook.Sheets['Resultate']) {
-                this.matches = this.parseMatchesFromSheet(workbook.Sheets['Resultate']);
-                console.log(`✅ Loaded ${this.matches.length} matches from Resultate sheet`);
-            }
-            
-            // Get unique courts
-            this.courts = [...new Set(this.matches.map(match => match.court).filter(court => court && court !== 'TBD'))];
+            // Set current data based on current tournament
+            this.setCurrentTournament(this.currentTournament);
             
         } catch (error) {
             console.error('Error loading Excel file:', error);
@@ -203,6 +197,61 @@ class TournamentManager {
             this.matches = this.getFallbackMatches();
             this.courts = ['Court 1', 'Court 2'];
         }
+    }
+    
+    // Load data for a specific tournament
+    async loadTournamentData(tournament, filename) {
+        try {
+            const response = await fetch(filename);
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            
+            let teams = [];
+            let matches = [];
+            
+            // Load teams from Anmeldung sheet
+            if (workbook.Sheets['Anmeldung']) {
+                teams = this.parseTeamsFromSheet(workbook.Sheets['Anmeldung']);
+            }
+            
+            // Load matches from Match sheet (preferred) or Resultate sheet
+            if (workbook.Sheets['Match']) {
+                matches = this.parseMatchesFromSheet(workbook.Sheets['Match'], tournament);
+            } else if (workbook.Sheets['Resultate']) {
+                matches = this.parseMatchesFromSheet(workbook.Sheets['Resultate'], tournament);
+            } else {
+            }
+            
+            // Get unique courts
+            const courts = [...new Set(matches.map(match => match.court).filter(court => court && court !== 'TBD'))];
+            
+            
+            // Store data
+            if (tournament === 'men') {
+                this.menData = { teams, matches, courts };
+            } else {
+                this.womenData = { teams, matches, courts };
+            }
+            
+        } catch (error) {
+            console.error(`Error loading ${tournament} tournament:`, error);
+        }
+    }
+    
+    // Set current tournament and update data
+    setCurrentTournament(tournament) {
+        this.currentTournament = tournament;
+        const data = tournament === 'men' ? this.menData : this.womenData;
+        this.teams = data.teams;
+        this.matches = data.matches;
+        this.courts = data.courts;
+    }
+    
+    // Switch tournament
+    switchTournament(tournament) {
+        this.setCurrentTournament(tournament);
+        this.updateLastUpdatedTime();
+        document.dispatchEvent(new CustomEvent('tournamentDataUpdated'));
     }
 
     // Load SheetJS library dynamically
@@ -247,33 +296,54 @@ class TournamentManager {
     }
 
     // Parse matches from Resultate sheet
-    parseMatchesFromSheet(sheet) {
+    parseMatchesFromSheet(sheet, tournament = 'men') {
         const matches = [];
         const range = XLSX.utils.decode_range(sheet['!ref']);
         
-        console.log('Parsing matches from Resultate sheet...');
-        console.log('Sheet range:', range);
         
         for (let row = 1; row <= range.e.r; row++) {
-            // Correct column mapping:
-            // A = Match Number, B = Round, C = Court, D = Startzeit, E = Team 1, G = Team 2
+            // Match sheet column mapping:
+            // A = MatchNumber, B = Round, C = Court, D = Startzeit, E = Team 1, F = Team 2, G = Result, N = status
             const matchNumber = sheet[XLSX.utils.encode_cell({ r: row, c: 0 })]?.v; // Column A
             const round = sheet[XLSX.utils.encode_cell({ r: row, c: 1 })]?.v; // Column B
             const court = sheet[XLSX.utils.encode_cell({ r: row, c: 2 })]?.v; // Column C
             const time = sheet[XLSX.utils.encode_cell({ r: row, c: 3 })]?.v; // Column D
             const team1 = sheet[XLSX.utils.encode_cell({ r: row, c: 4 })]?.v; // Column E
-            const team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 6 })]?.v; // Column G (not F!)
+            const team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 5 })]?.v; // Column F
+            const result = sheet[XLSX.utils.encode_cell({ r: row, c: 6 })]?.v; // Column G
+            const status = sheet[XLSX.utils.encode_cell({ r: row, c: 17 })]?.v; // Column R (status) - 14th column (0-indexed)
+            const sex = sheet[XLSX.utils.encode_cell({ r: row, c: 18 })]?.v; // Column S (sex)
             
-            // Skip empty rows
-            if (!team1 && !team2) continue;
+            // Get detailed scores from set columns
+            const set1Team1 = sheet[XLSX.utils.encode_cell({ r: row, c: 8 })]?.v; // Column I (1. Set Team 1)
+            const set1Team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 9 })]?.v; // Column J (1. Set Team 2)
+            const set2Team1 = sheet[XLSX.utils.encode_cell({ r: row, c: 10 })]?.v; // Column K (2. Set Team 1)
+            const set2Team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 11 })]?.v; // Column L (2. Set Team 2)
             
-             console.log(`Row ${row}:`, { matchNumber, round, court, time, team1, team2 });
-             console.log(`Time type: ${typeof time}, Time value: ${time}`);
+            // Build detailed score string
+            let fullScore = '';
+            if (set1Team1 && set1Team2 && (set1Team1 !== 0 || set1Team2 !== 0)) {
+                fullScore += `${set1Team1} ${set1Team2}`;
+            }
+            if (set2Team1 && set2Team2 && (set2Team1 !== 0 || set2Team2 !== 0)) {
+                fullScore += (fullScore ? ' ' : '') + `${set2Team1} ${set2Team2}`;
+            }
+            
+            // For tableau, we want to show ALL matches regardless of court
+            // Only skip if court is completely missing (undefined/null)
+            if (court === undefined || court === null) {
+                continue;
+            }
+            
              
-             // Format court as "Court X" if it's a number
+             // Format court as "Court X" if it's a number, or "TBD" for Court 0
              let courtFormatted = 'TBD';
              if (court !== null && court !== undefined && court !== '') {
-                 courtFormatted = `Court ${court}`;
+                 if (court === 0) {
+                     courtFormatted = 'TBD'; // Court 0 means no specific court assigned
+                 } else {
+                     courtFormatted = `Court ${court}`;
+                 }
              }
              
              // Format time - handle different Excel time formats
@@ -290,20 +360,85 @@ class TournamentManager {
                  }
              }
             
+            
+            // Skip matches with blank status only for index page, not for tableau
+            // For tableau, we want to show all matches regardless of status
+            
+            // Use status from Match sheet - respect Excel formula logic
+            let matchStatus = 'upcoming';
+            if (status && status.toString().trim() !== '') {
+                const statusStr = status.toString().trim().toLowerCase();
+                if (statusStr === 'completed') {
+                    matchStatus = 'concluded';
+                } else if (statusStr === 'in_progress') {
+                    matchStatus = 'open';
+                } else if (statusStr.startsWith('upcoming_')) {
+                    matchStatus = 'upcoming';
+                } else {
+                    matchStatus = 'upcoming'; // Default for unknown statuses
+                }
+            } else {
+                // No status from Excel - default to upcoming for tableau display
+                matchStatus = 'upcoming';
+            }
+            
             matches.push({
                 id: `match_${round}_${matchNumber}`,
                 round: round || 'TBD',
                 matchNumber: matchNumber || 0,
                 court: courtFormatted,
                 time: timeFormatted,
-                team1: { teamName: team1 || 'TBD' },
-                team2: { teamName: team2 || 'TBD' },
-                status: 'upcoming',
-                result: null
+                team1: { teamName: team1 || 'Team 1' },
+                team2: { teamName: team2 || 'Team 2' },
+                status: matchStatus,
+                result: result || fullScore.trim() || null,
+                score: fullScore.trim() || null,
+                sex: sex ? sex.toString().toUpperCase() : (tournament === 'men' ? 'M' : 'F')
             });
         }
         
-        console.log(`Parsed ${matches.length} matches`);
+        // Update status logic: if a game is concluded, next game on same court is upcoming
+        const courtGroups = {};
+        matches.forEach(match => {
+            const courtNum = match.court.replace('Court ', '');
+            if (courtNum && courtNum !== 'TBD') {
+                if (!courtGroups[courtNum]) {
+                    courtGroups[courtNum] = [];
+                }
+                courtGroups[courtNum].push(match);
+            }
+        });
+        
+        // Sort matches by time within each court and update status
+        Object.keys(courtGroups).forEach(court => {
+            courtGroups[court].sort((a, b) => {
+                const timeA = a.time || '23:59';
+                const timeB = b.time || '23:59';
+                return timeA.localeCompare(timeB);
+            });
+            
+            
+            // Respect Excel status values - only override if Excel status is not specific
+            for (let i = 0; i < courtGroups[court].length; i++) {
+                const currentMatch = courtGroups[court][i];
+                const originalStatus = currentMatch.status;
+                
+                // Only override if the Excel status is generic 'upcoming' or if we need to determine based on previous game
+                if (originalStatus === 'upcoming' && i > 0) {
+                    const previousMatch = courtGroups[court][i - 1];
+                    if (previousMatch.status === 'concluded') {
+                        // Previous game is concluded, so this one stays upcoming
+                    } else if (previousMatch.status === 'open') {
+                        // Previous game is open, so this one is upcoming
+                    }
+                } else if (originalStatus === 'concluded' && currentMatch.result && currentMatch.result.toString().trim() !== '') {
+                    // Keep concluded status if it has a result
+                } else if (originalStatus === 'open') {
+                    // Keep open status from Excel
+                }
+            }
+        });
+        
         return matches;
     }
 
@@ -413,7 +548,6 @@ async function loadIndexPage() {
         
         // Listen for data updates
         document.addEventListener('tournamentDataUpdated', () => {
-            console.log('🔄 Refreshing index page with new data...');
             displayCourts(courtsGrid);
         });
         
@@ -434,11 +568,15 @@ function displayCourts(container) {
         return;
     }
     
-    // Get unique courts from actual match data
-    const courts = [...new Set(tournament.matches.map(match => match.court).filter(court => court && court !== 'TBD'))];
+    // Get all courts from both tournaments
+    const allCourts = [...(tournament.menData?.courts || []), ...(tournament.womenData?.courts || [])];
+    const courts = [...new Set(allCourts)].sort((a, b) => {
+        const numA = parseInt(a.replace('Court ', '')) || 0;
+        const numB = parseInt(b.replace('Court ', '')) || 0;
+        return numA - numB;
+    });
     
-    console.log('Courts found:', courts);
-    console.log('Court types:', courts.map(c => typeof c));
+    
     
     if (courts.length === 0) {
         container.innerHTML = '<div class="no-matches-court">Keine Courts verfügbar</div>';
@@ -447,30 +585,44 @@ function displayCourts(container) {
     
     // Create court cards for each court that has matches
     courts.forEach(court => {
+        // Get matches for this court from both tournaments
+        const menMatches = tournament.menData?.matches?.filter(match => match.court === court) || [];
+        const womenMatches = tournament.womenData?.matches?.filter(match => match.court === court) || [];
+        const courtMatches = [...menMatches, ...womenMatches];
+        
         const courtCard = document.createElement('div');
         courtCard.className = 'court-card';
         
-        // Get matches for this court
-        const courtMatches = tournament.matches.filter(match => match.court === court);
+        // Determine tournament type based on matches
+        const hasMenMatches = menMatches.length > 0;
+        const hasWomenMatches = womenMatches.length > 0;
         
-        // Find current match (in progress)
-        const now = new Date();
-        const currentMatch = courtMatches.find(match => {
-            if (!match.time || match.time === 'TBD') return false;
-            const matchTime = new Date(`2025-09-20T${match.time}`);
-            return !match.result && matchTime <= now && matchTime > new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        if (hasMenMatches && !hasWomenMatches) {
+            courtCard.classList.add('men-tournament');
+        } else if (hasWomenMatches && !hasMenMatches) {
+            courtCard.classList.add('women-tournament');
+        } else if (hasMenMatches && hasWomenMatches) {
+            // Mixed court - use men's style as default, or could be a special mixed style
+            courtCard.classList.add('men-tournament');
+        }
+        
+        // Sort matches by time
+        courtMatches.sort((a, b) => {
+            const timeA = a.time || '23:59';
+            const timeB = b.time || '23:59';
+            return timeA.localeCompare(timeB);
         });
         
-        // Find next match (upcoming)
-        const nextMatch = courtMatches.find(match => {
-            if (!match.time || match.time === 'TBD') return false;
-            const matchTime = new Date(`2025-09-20T${match.time}`);
-            return !match.result && matchTime > now;
-        });
+        // Find current match (open status)
+        const currentMatch = courtMatches.find(match => match.status === 'open');
+        
+        // Find next match (upcoming status)
+        const nextMatch = courtMatches.find(match => match.status === 'upcoming');
         
         // Ensure court is a string and extract number
         const courtStr = String(court || 'Court 1');
         const courtNumber = courtStr.replace('Court ', '') || '1';
+        
         
         courtCard.innerHTML = `
             <div class="court-header">
@@ -493,6 +645,9 @@ function displayCourts(container) {
      const team1Name = match.team1?.teamName || 'TBD';
      const team2Name = match.team2?.teamName || 'TBD';
      
+     // Use sex from match object (already set during parsing)
+     const matchSex = match.sex || 'M';
+     
      return `
          <div class="match-slot ${type}">
              <div class="match-status-badge ${type}">
@@ -511,6 +666,7 @@ function displayCourts(container) {
              <div class="match-info-compact">
                  <span class="match-time-compact">${match.time || 'TBD'}</span>
                  <span class="match-number-compact">Match ${match.matchNumber || 'TBD'}</span>
+                 <span class="match-sex-compact">${matchSex}</span>
              </div>
          </div>
      `;
@@ -530,27 +686,65 @@ async function loadAllGames() {
 
         await tournament.init();
         
-        // Show all matches
-        const allMatches = tournament.getAllMatches();
+        // Get all matches and filter out those without court or time
+        const allMatches = tournament.getAllMatches().filter(match => {
+            // Filter out matches without court or time
+            return match.court && match.court !== 'TBD' && match.time && match.time !== 'TBD';
+        });
         
         if (allMatches.length === 0) {
             noMatches.style.display = 'block';
         } else {
+            // Sort matches by time then court
+            const sortedMatches = allMatches.sort((a, b) => {
+                // First sort by time
+                const timeA = a.time || '23:59';
+                const timeB = b.time || '23:59';
+                if (timeA !== timeB) {
+                    return timeA.localeCompare(timeB);
+                }
+                // Then sort by court
+                const courtA = parseInt(a.court) || 999;
+                const courtB = parseInt(b.court) || 999;
+                return courtA - courtB;
+            });
+            
             matchesSection.style.display = 'block';
-            displayMatches(allMatches, matchesList);
+            displayMatches(sortedMatches, matchesList);
+        }
+        
+        // Add tournament filter event listener
+        const tournamentFilter = document.getElementById('tournamentFilter');
+        if (tournamentFilter) {
+            tournamentFilter.addEventListener('change', (e) => {
+                tournament.switchTournament(e.target.value);
+            });
         }
         
         // Listen for data updates
         document.addEventListener('tournamentDataUpdated', () => {
-            console.log('🔄 Refreshing all games page with new data...');
             const updatedMatches = tournament.getAllMatches();
             if (updatedMatches.length === 0) {
                 noMatches.style.display = 'block';
                 matchesSection.style.display = 'none';
             } else {
+                // Sort updated matches by time then court
+                const sortedMatches = updatedMatches.sort((a, b) => {
+                    // First sort by time
+                    const timeA = a.time || '23:59';
+                    const timeB = b.time || '23:59';
+                    if (timeA !== timeB) {
+                        return timeA.localeCompare(timeB);
+                    }
+                    // Then sort by court
+                    const courtA = parseInt(a.court) || 999;
+                    const courtB = parseInt(b.court) || 999;
+                    return courtA - courtB;
+                });
+                
                 matchesSection.style.display = 'block';
                 noMatches.style.display = 'none';
-                displayMatches(updatedMatches, matchesList);
+                displayMatches(sortedMatches, matchesList);
             }
         });
         
@@ -642,18 +836,19 @@ function displayMatches(matches, container) {
          const team1Name = match.team1?.teamName || 'TBD';
          const team2Name = match.team2?.teamName || 'TBD';
         
-        // Determine match status for styling
-        const now = new Date();
-        const matchTime = new Date(`2025-09-20T${match.time}`);
+        // Use status from Excel status column
         let statusClass = 'upcoming';
         let statusText = 'Upcoming';
         
-        if (match.result) {
+        if (match.status === 'concluded') {
             statusClass = 'completed';
             statusText = 'Completed';
-        } else if (matchTime < now) {
+        } else if (match.status === 'open') {
             statusClass = 'in-progress';
             statusText = 'In Progress';
+        } else if (match.status === 'upcoming') {
+            statusClass = 'upcoming';
+            statusText = 'Upcoming';
         }
         
         matchCard.innerHTML = `
@@ -690,7 +885,7 @@ function displayMatches(matches, container) {
                         </div>
                         <div class="match-sex">
                             <i class="fas fa-mars"></i>
-                            <span>M</span>
+                            <span>${match.sex || 'M'}</span>
                         </div>
                         <div class="match-status ${statusClass}">
                             <i class="fas fa-circle"></i>
@@ -730,9 +925,16 @@ async function loadTableau() {
         // Show tableau
         tableauSection.style.display = 'block';
         
+        // Add tournament filter event listener
+        const tournamentFilter = document.getElementById('tournamentFilter');
+        if (tournamentFilter) {
+            tournamentFilter.addEventListener('change', (e) => {
+                tournament.switchTournament(e.target.value);
+            });
+        }
+        
         // Listen for data updates
         document.addEventListener('tournamentDataUpdated', () => {
-            console.log('🔄 Refreshing tableau with new data...');
             if (bracketContainer) {
                 generateTournamentBracket(bracketContainer);
             }
@@ -751,7 +953,10 @@ async function loadTableau() {
 function generateTournamentBracket(container) {
     container.innerHTML = '';
     
-    if (!tournament.matches || tournament.matches.length === 0) {
+    // Get matches from the currently selected tournament only
+    const allMatches = tournament.matches || [];
+    
+    if (allMatches.length === 0) {
         container.innerHTML = '<div class="no-bracket">Keine Turnierdaten verfügbar</div>';
         return;
     }
@@ -761,7 +966,7 @@ function generateTournamentBracket(container) {
     bracket.className = 'bracket';
     
     // Sort matches by match number
-    const sortedMatches = tournament.matches.sort((a, b) => a.matchNumber - b.matchNumber);
+    const sortedMatches = allMatches.sort((a, b) => a.matchNumber - b.matchNumber);
     
     // Create match map for easy access
     const matchMap = {};
@@ -769,18 +974,19 @@ function generateTournamentBracket(container) {
         matchMap[match.matchNumber] = match;
     });
     
+    // Create complete bracket structure with all expected matches
     // Round I (matches 1-8)
-    const round1Matches = sortedMatches.filter(m => m.matchNumber >= 1 && m.matchNumber <= 8);
+    const round1Matches = createMatchesForRange(1, 8, sortedMatches);
     const round1 = createRound('Round I', round1Matches);
     bracket.appendChild(round1);
     
     // Winner R1 / Round II (matches 13-16)
-    const winnerR1Matches = sortedMatches.filter(m => m.matchNumber >= 13 && m.matchNumber <= 16);
+    const winnerR1Matches = createMatchesForRange(13, 16, sortedMatches);
     const winnerR1 = createRound('Winner R1', winnerR1Matches);
     bracket.appendChild(winnerR1);
     
     // Winner R2 (matches 21-22)
-    const winnerR2Matches = sortedMatches.filter(m => m.matchNumber === 21 || m.matchNumber === 22);
+    const winnerR2Matches = createMatchesForRange(21, 22, sortedMatches);
     const winnerR2 = createRound('Winner R2', winnerR2Matches);
     bracket.appendChild(winnerR2);
     
@@ -789,17 +995,17 @@ function generateTournamentBracket(container) {
     semifinalsContainer.className = 'semifinals-container';
     
     // Semifinal 1 (match 27)
-    const sf1Matches = sortedMatches.filter(m => m.matchNumber === 27);
+    const sf1Matches = createMatchesForRange(27, 27, sortedMatches);
     const sf1 = createRound('Semifinals', sf1Matches);
     semifinalsContainer.appendChild(sf1);
     
     // Finals (matches 29-30) - nested inside semifinals
-    const finalMatches = sortedMatches.filter(m => m.matchNumber === 29 || m.matchNumber === 30);
+    const finalMatches = createMatchesForRange(29, 30, sortedMatches);
     const finals = createRound('Finals', finalMatches, true);
     semifinalsContainer.appendChild(finals);
     
     // Semifinal 2 (match 28)
-    const sf2Matches = sortedMatches.filter(m => m.matchNumber === 28);
+    const sf2Matches = createMatchesForRange(28, 28, sortedMatches);
     const sf2 = createRound('Semifinals', sf2Matches);
     semifinalsContainer.appendChild(sf2);
     
@@ -810,22 +1016,22 @@ function generateTournamentBracket(container) {
     losersContainer.className = 'losers-bracket-container';
     
     // Loser R4 (matches 25-26) - rightmost
-    const lr4Matches = sortedMatches.filter(m => m.matchNumber === 25 || m.matchNumber === 26);
+    const lr4Matches = createMatchesForRange(25, 26, sortedMatches);
     const lr4 = createRound('Loser R4', lr4Matches);
     losersContainer.appendChild(lr4);
     
     // Loser R3 (matches 23-24) - second rightmost
-    const lr3Matches = sortedMatches.filter(m => m.matchNumber === 23 || m.matchNumber === 24);
+    const lr3Matches = createMatchesForRange(23, 24, sortedMatches);
     const lr3 = createRound('Loser R3', lr3Matches);
     losersContainer.appendChild(lr3);
     
     // Loser R2 (matches 17-20) - third rightmost
-    const lr2Matches = sortedMatches.filter(m => m.matchNumber >= 17 && m.matchNumber <= 20);
+    const lr2Matches = createMatchesForRange(17, 20, sortedMatches);
     const lr2 = createRound('Loser R2', lr2Matches);
     losersContainer.appendChild(lr2);
     
     // Loser R1 (matches 9-12) - fourth rightmost
-    const lr1Matches = sortedMatches.filter(m => m.matchNumber >= 9 && m.matchNumber <= 12);
+    const lr1Matches = createMatchesForRange(9, 12, sortedMatches);
     const lr1 = createRound('Loser R1', lr1Matches);
     losersContainer.appendChild(lr1);
     
@@ -835,6 +1041,42 @@ function generateTournamentBracket(container) {
     addZoomControls(bracket);
     
     container.appendChild(bracket);
+}
+
+// Create matches for a range, filling in missing matches with placeholders
+function createMatchesForRange(start, end, existingMatches) {
+    const matches = [];
+    const matchMap = {};
+    
+    // Create a map of existing matches for quick lookup
+    existingMatches.forEach(match => {
+        matchMap[match.matchNumber] = match;
+    });
+    
+    // Create matches for the range
+    for (let i = start; i <= end; i++) {
+        if (matchMap[i]) {
+            // Use existing match if available
+            matches.push(matchMap[i]);
+        } else {
+            // Create placeholder match
+            matches.push({
+                id: `match_placeholder_${i}`,
+                matchNumber: i,
+                team1: { teamName: 'Team 1' },
+                team2: { teamName: 'Team 2' },
+                status: 'upcoming',
+                result: null,
+                score: null,
+                court: 'TBD',
+                time: 'TBD',
+                round: 'TBD',
+                sex: 'M' // Default to men's tournament
+            });
+        }
+    }
+    
+    return matches;
 }
 
 // Add zoom controls to bracket
@@ -920,12 +1162,52 @@ function createMatch(match, isFinals = false) {
     
     matchDiv.appendChild(matchNumber);
     
+    // Parse score if available
+    let team1Score = '-';
+    let team2Score = '-';
+    if (match.score) {
+        const scoreStr = match.score.toString().trim();
+        
+        // Try simple format like "0 2" (sets won by each team)
+        const simpleMatch = scoreStr.match(/^(\d+)\s+(\d+)$/);
+        if (simpleMatch) {
+            team1Score = simpleMatch[1];
+            team2Score = simpleMatch[2];
+        } else {
+            // Try to extract final score from complex format like "15 <> 21 16 <> 21"
+            const allScores = scoreStr.match(/(\d+)\s*<>\s*(\d+)/g);
+            if (allScores && allScores.length > 0) {
+                // Count sets won by each team
+                let team1Sets = 0;
+                let team2Sets = 0;
+                allScores.forEach(setScore => {
+                    const setMatch = setScore.match(/(\d+)\s*<>\s*(\d+)/);
+                    if (setMatch) {
+                        const score1 = parseInt(setMatch[1]);
+                        const score2 = parseInt(setMatch[2]);
+                        if (score1 > score2) team1Sets++;
+                        else if (score2 > score1) team2Sets++;
+                    }
+                });
+                team1Score = team1Sets.toString();
+                team2Score = team2Sets.toString();
+            } else {
+                // Try other formats
+                const scoreMatch = scoreStr.match(/(\d+)[\s:,-]+(\d+)/);
+                if (scoreMatch) {
+                    team1Score = scoreMatch[1];
+                    team2Score = scoreMatch[2];
+                }
+            }
+        }
+    }
+    
     // Team 1
     const team1Div = document.createElement('div');
     team1Div.className = 'team';
     team1Div.innerHTML = `
         <span class="team-name">${match.team1?.teamName || 'TBD'}</span>
-        <span class="score">-</span>
+        <span class="score">${team1Score}</span>
     `;
     matchDiv.appendChild(team1Div);
     
@@ -934,7 +1216,7 @@ function createMatch(match, isFinals = false) {
     team2Div.className = 'team';
     team2Div.innerHTML = `
         <span class="team-name">${match.team2?.teamName || 'TBD'}</span>
-        <span class="score">-</span>
+        <span class="score">${team2Score}</span>
     `;
     matchDiv.appendChild(team2Div);
     
@@ -1127,7 +1409,7 @@ async function loadStandings() {
         if (!standingsContainer) return;
 
         // Read Excel file and get Rangliste sheet
-        const response = await fetch('2025.09.20 Spielplan B2 M Turnier Kloten.xlsx');
+        const response = await fetch('b2m.xlsx');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         
@@ -1184,6 +1466,11 @@ function generateStandingsTable(data, container) {
     for (let i = 1; i < data.length; i++) {
         const row = data[i];
         if (row && row.some(cell => cell !== '')) { // Skip empty rows
+            // Skip row 19 (index 18) which contains the "Zur einfacheren Bedienung..." text
+            if (i === 18) {
+                continue;
+            }
+            
             const tr = document.createElement('tr');
             row.forEach(cell => {
                 const td = document.createElement('td');

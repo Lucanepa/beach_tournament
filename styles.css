@@ -130,6 +130,52 @@ body {
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
+/* Court Cards with Tournament Colors - Index Page Specific */
+.index-page .court-card.men-tournament {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+    color: black !important;
+    border-color: #1e40af !important;
+}
+
+.index-page .court-card.women-tournament {
+    background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%) !important;
+    color: black !important;
+    border-color: #db2777 !important;
+}
+
+/* Text contrast for colored cards - Index Page Specific */
+.index-page .court-card.men-tournament .team-name-compact,
+.index-page .court-card.men-tournament .match-info-compact,
+.index-page .court-card.men-tournament .match-time-compact,
+.index-page .court-card.men-tournament .match-number-compact,
+.index-page .court-card.men-tournament .match-sex-compact {
+    color: black !important;
+}
+
+.index-page .court-card.women-tournament .team-name-compact,
+.index-page .court-card.women-tournament .match-info-compact,
+.index-page .court-card.women-tournament .match-time-compact,
+.index-page .court-card.women-tournament .match-number-compact,
+.index-page .court-card.women-tournament .match-sex-compact {
+    color: black !important;
+}
+
+/* Court title with white background for visibility */
+.index-page .court-card.men-tournament .court-title,
+.index-page .court-card.women-tournament .court-title {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #1e293b !important;
+    padding: 0.25rem 0.75rem !important;
+    border-radius: 8px !important;
+    display: inline-block !important;
+}
+
+/* Ensure no-matches text is visible on colored backgrounds - Index Page Specific */
+.index-page .court-card.men-tournament .no-matches-court,
+.index-page .court-card.women-tournament .no-matches-court {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
 .court-header {
     display: flex;
     align-items: center;
@@ -150,6 +196,14 @@ body {
     justify-content: center;
     font-weight: 700;
     font-size: 1.1rem;
+}
+
+/* Court number with white background for colored cards */
+.index-page .court-card.men-tournament .court-number,
+.index-page .court-card.women-tournament .court-number {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #1e293b !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
 }
 
 .court-title {
@@ -199,6 +253,29 @@ body {
 .match-status-badge.next {
     background: #3b82f6;
     color: white;
+}
+
+/* Status badges for tournament-specific cards */
+.court-card.men-tournament .match-status-badge.current {
+    background: #22c55e;
+    color: white;
+}
+
+.court-card.men-tournament .match-status-badge.next {
+    background: #fbbf24;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+.court-card.women-tournament .match-status-badge.current {
+    background: #ec4899;
+    color: white;
+}
+
+.court-card.women-tournament .match-status-badge.next {
+    background: #fbbf24;
+    color: #ec4899;
+    font-weight: 600;
 }
 
 .match-teams-compact {
@@ -254,6 +331,22 @@ body {
     padding: 0.25rem 0.5rem;
     border-radius: 8px;
     font-weight: 600;
+}
+
+.match-sex-compact {
+    background: #3b82f6;
+    color: black;
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.7rem;
+    margin-left: 0.25rem;
+}
+
+/* Override for index page to ensure black text */
+.index-page .match-sex-compact {
+    background: #3b82f6 !important;
+    color: black !important;
 }
 
 .no-matches-court {
@@ -1572,6 +1665,29 @@ body {
     border-bottom: 1px solid #e9ecef;
 }
 
+/* Column layout: RANG left, TEAM auto width (priority), rest auto width */
+.standings-table th:first-child,
+.standings-table td:first-child {
+    width: auto;
+    min-width: 60px;
+    text-align: left;
+}
+
+.standings-table th:nth-child(2),
+.standings-table td:nth-child(2) {
+    width: auto;
+    min-width: 200px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.standings-table th:not(:first-child):not(:nth-child(2)),
+.standings-table td:not(:first-child):not(:nth-child(2)) {
+    width: auto;
+    min-width: 80px;
+    text-align: center;
+}
+
 .standings-table th {
     background: #f8f9fa;
     font-weight: 600;
@@ -1601,4 +1717,79 @@ body {
     .standings-table td {
         padding: 0.5rem;
     }
+}
+
+/* Tournament Filter */
+.tournament-filter {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.tournament-filter label {
+    font-weight: 600;
+    color: #495057;
+    margin: 0;
+}
+
+.filter-select {
+    padding: 0.5rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    background: white;
+    font-size: 0.9rem;
+    color: #495057;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #1e3a8a;
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* All Games Page - Normal sized text */
+body:has(.page-title:contains("All Games")) .team-name,
+.all-games-page .team-name {
+    font-size: 0.9rem !important;
+    line-height: 1.4 !important;
+}
+
+.all-games-page .match-info,
+.all-games-page .match-time,
+.all-games-page .match-number {
+    font-size: 0.85rem !important;
+}
+
+.all-games-page .team-label {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+}
+
+.all-games-page .match-card {
+    padding: 1rem !important;
+    margin: 0.5rem 0 !important;
+}
+
+.all-games-page .team-row {
+    padding: 0.5rem !important;
+    min-height: 2.5rem !important;
+}
+
+.all-games-page .match-info {
+    padding: 0.5rem !important;
+}
+
+/* Custom team name styling for all games page */
+.all-games-page .team-name {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    color: #2c3e50 !important;
 }

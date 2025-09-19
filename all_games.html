@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
+<body class="all-games-page">
     <div class="container">
         <main class="main-content">
             <a href="index.html" class="back-button">
@@ -28,29 +28,14 @@
             </div>
 
             <div class="matches-section" id="matchesSection" style="display: none;">
-                <div class="filter-section">
-                    <div class="filter-group">
-                        <label for="teamFilter">Team filtern:</label>
-                        <select id="teamFilter" class="filter-select">
-                            <option value="">Alle Teams</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="roundFilter">Runde filtern:</label>
-                        <select id="roundFilter" class="filter-select">
-                            <option value="">Alle Runden</option>
-                            <option value="1">1. Runde</option>
-                            <option value="2">2. Runde</option>
-                            <option value="3">3. Runde</option>
-                            <option value="4">4. Runde</option>
-                            <option value="5">5. Runde</option>
-                            <option value="6">6. Runde</option>
-                            <option value="7">7. Runde</option>
-                            <option value="8">8. Runde</option>
-                        </select>
-                    </div>
+                <div class="tournament-filter">
+                    <label for="tournamentFilter">Turnier:</label>
+                    <select id="tournamentFilter" class="filter-select">
+                        <option value="men">Herren (B2M)</option>
+                        <option value="women">Damen (B3F)</option>
+                    </select>
                 </div>
-
+                
                 <div class="matches-list" id="matchesList">
                     <!-- All matches will be populated by JavaScript -->
                 </div>
