@@ -1,469 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beach Tournament Manager</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
-        .section {
-            margin-bottom: 40px;
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 25px;
-            border-left: 5px solid #ff6b6b;
-        }
-
-        .section h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 1.8rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section h2 i {
-            color: #ff6b6b;
-        }
-
-        .game-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .game-card {
-            background: white;
-            border: 2px solid #dee2e6;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .game-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            border-color: #ff6b6b;
-        }
-
-        .game-card.current {
-            border-color: #28a745;
-            background: linear-gradient(135deg, #f8fff9 0%, #ffffff 100%);
-        }
-
-        .game-card.scheduled {
-            border-color: #ffc107;
-            background: linear-gradient(135deg, #fffdf8 0%, #ffffff 100%);
-        }
-
-        .game-card.finished {
-            border-color: #6c757d;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-        }
-
-        .game-card.pending-confirmation {
-            border-color: #fd7e14;
-            background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
-        }
-
-        .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .game-status {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .status-current {
-            background: #28a745;
-            color: white;
-        }
-
-        .status-scheduled {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .status-finished {
-            background: #6c757d;
-            color: white;
-        }
-
-        .status-pending {
-            background: #fd7e14;
-            color: white;
-        }
-
-        .teams {
-            margin-bottom: 15px;
-        }
-
-        .team {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            margin: 5px 0;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-weight: 500;
-        }
-
-        .team.team-a {
-            border-left: 4px solid #007bff;
-        }
-
-        .team.team-b {
-            border-left: 4px solid #dc3545;
-        }
-
-        .team-score {
-            background: #007bff;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            min-width: 30px;
-            text-align: center;
-        }
-
-        .game-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .info-item {
-            text-align: center;
-            padding: 8px;
-            background: #e9ecef;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-
-        .info-item strong {
-            display: block;
-            color: #495057;
-            margin-bottom: 3px;
-        }
-
-        .sets-display {
-            margin-bottom: 15px;
-        }
-
-        .set-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            margin: 5px 0;
-            background: #e9ecef;
-            border-radius: 6px;
-            font-weight: 500;
-        }
-
-        .set-label {
-            font-weight: bold;
-            color: #495057;
-        }
-
-        .set-score {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .confirmation-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .btn-edit, .btn-confirm {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .btn-edit {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-edit:hover {
-            background: #545b62;
-        }
-
-        .btn-confirm {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-confirm:hover {
-            background: #218838;
-        }
-
-        .set-input-form {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .set-input-group {
-            margin-bottom: 15px;
-        }
-
-        .set-input-group label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #495057;
-        }
-
-        .set-inputs {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .set-inputs input {
-            width: 80px;
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            text-align: center;
-            font-size: 16px;
-        }
-
-        .set-separator {
-            font-weight: bold;
-            color: #6c757d;
-        }
-
-        .btn-close-set {
-            background: #17a2b8;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-
-        .btn-close-set:hover {
-            background: #138496;
-        }
-
-        .submit-score {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            width: 100%;
-            margin-top: 15px;
-        }
-
-        .submit-score:hover {
-            background: #218838;
-        }
-
-        .submit-score:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-
-        .refresh-btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
-
-        .refresh-btn:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
-
-        .loading i {
-            font-size: 2rem;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border: 1px solid #f5c6cb;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-                border-radius: 15px;
-            }
-            
-            .header {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .content {
-                padding: 20px;
-            }
-            
-            .game-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <title>ZuZu Beach Turnier</title>
+    <link rel="icon" type="image/png" href="ZuZU.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1><i class="fas fa-volleyball-ball"></i> Beach Tournament Manager</h1>
-            <p>Live tournament updates and score management</p>
-        </div>
-        
-        <div class="content">
-            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                <button class="refresh-btn" onclick="refreshData()">
-                    <i class="fas fa-sync-alt"></i> Refresh Data
-                </button>
-                <a href="tableau.html" class="refresh-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
-                    <i class="fas fa-trophy"></i> View Tournament Bracket
+        <main class="main-content">
+            <div class="top-buttons">
+                <a href="all-games.html" class="top-button">
+                    <i class="fas fa-list"></i>
+                    All Games
                 </a>
-                <a href="event_manager.html" class="refresh-btn" style="text-decoration: none; display: inline-flex; align-items: center;">
-                    <i class="fas fa-user-shield"></i> Event Manager
+                <a href="tableau.html" class="top-button">
+                    <i class="fas fa-table"></i>
+                    Tableau
                 </a>
             </div>
-            
-            <div id="loading" class="loading">
-                <i class="fas fa-spinner"></i>
-                <p>Loading tournament data...</p>
+
+            <div class="loading-section" id="loading">
+                <div class="loading"></div>
+                <p>Lade Spieldaten...</p>
             </div>
-            
-            <div id="error" class="error" style="display: none;"></div>
-            
-            <div class="section">
-                <h2><i class="fas fa-play-circle"></i> Current Games</h2>
-                <div id="currentGames" class="game-grid">
-                    <!-- Current games will be populated here -->
+
+            <div class="courts-section" id="courtsSection" style="display: none;">
+                <div class="courts-grid" id="courtsGrid">
+                    <!-- Courts will be populated by JavaScript -->
                 </div>
             </div>
-            
-            <div class="section">
-                <h2><i class="fas fa-clock"></i> Next Games</h2>
-                <div id="nextGames" class="game-grid">
-                    <!-- Next games will be populated here -->
+
+            <div class="no-matches" id="noMatches" style="display: none;">
+                <i class="fas fa-calendar-times"></i>
+                <h3>Keine Spiele verfügbar</h3>
+                <p>Derzeit sind keine Spiele geplant.</p>
+            </div>
+
+            <div class="info-section">
+                <h3>Turnier-Informationen</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <i class="fas fa-users"></i>
+                        <span>16 Teams</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Kloten</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>20.09.2025</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-medal"></i>
+                        <span>B2 Kategorie</span>
+                    </div>
                 </div>
             </div>
-            
-            <div class="section">
-                <h2><i class="fas fa-hourglass-half"></i> Pending Confirmations</h2>
-                <div id="pendingConfirmations" class="game-grid">
-                    <!-- Games waiting for event manager confirmation will be populated here -->
-                </div>
-            </div>
-            
-            <div class="section">
-                <h2><i class="fas fa-flag-checkered"></i> Finished Games</h2>
-                <div id="finishedGames" class="game-grid">
-                    <!-- Finished games will be populated here -->
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Load index page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            loadIndexPage();
+        });
+    </script>
 </body>
 </html>

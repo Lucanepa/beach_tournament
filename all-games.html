@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Games - ZuZu Beach Turnier</title>
+    <link rel="icon" type="image/png" href="ZuZU.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <main class="main-content">
+            <a href="index.html" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                Zurück zur Startseite
+            </a>
+
+            <h2 class="page-title">
+                <i class="fas fa-list"></i>
+                All Games
+            </h2>
+
+            <div class="loading-section" id="loading">
+                <div class="loading"></div>
+                <p>Lade alle Spiele...</p>
+            </div>
+
+            <div class="matches-section" id="matchesSection" style="display: none;">
+                <div class="filter-section">
+                    <div class="filter-group">
+                        <label for="teamFilter">Team filtern:</label>
+                        <select id="teamFilter" class="filter-select">
+                            <option value="">Alle Teams</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="roundFilter">Runde filtern:</label>
+                        <select id="roundFilter" class="filter-select">
+                            <option value="">Alle Runden</option>
+                            <option value="1">1. Runde</option>
+                            <option value="2">2. Runde</option>
+                            <option value="3">3. Runde</option>
+                            <option value="4">4. Runde</option>
+                            <option value="5">5. Runde</option>
+                            <option value="6">6. Runde</option>
+                            <option value="7">7. Runde</option>
+                            <option value="8">8. Runde</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="matches-list" id="matchesList">
+                    <!-- All matches will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="no-matches" id="noMatches" style="display: none;">
+                <i class="fas fa-calendar-times"></i>
+                <h3>Keine Spiele verfügbar</h3>
+                <p>Es sind derzeit keine Spiele geplant.</p>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 ZuZu Beach Turnier Kloten</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Load all games when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllGames();
+        });
+    </script>
+</body>
+</html>
