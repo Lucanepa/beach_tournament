@@ -173,7 +173,7 @@ class TournamentManager {
     }
 
     // Load data directly from Excel file
-    async loadExcelData() {
+    async loadExcelData(forceRefresh = false) {
         try {
             
             // Load SheetJS library if not already loaded
@@ -181,11 +181,11 @@ class TournamentManager {
                 await this.loadSheetJS();
             }
             
-            // Load men's tournament data
-            await this.loadTournamentData('men', 'b2m.xlsx');
+            // Load men's tournament data with cache busting
+            await this.loadTournamentData('men', 'b2m.xlsx', forceRefresh);
             
-            // Load women's tournament data
-            await this.loadTournamentData('women', 'b3f.xlsx');
+            // Load women's tournament data with cache busting
+            await this.loadTournamentData('women', 'b3f.xlsx', forceRefresh);
             
             // Set current data based on current tournament
             this.setCurrentTournament(this.currentTournament);
@@ -200,9 +200,17 @@ class TournamentManager {
     }
     
     // Load data for a specific tournament
-    async loadTournamentData(tournament, filename) {
+    async loadTournamentData(tournament, filename, forceRefresh = false) {
         try {
-            const response = await fetch(filename);
+            // Add cache busting parameter if force refresh is requested
+            const url = forceRefresh ? `${filename}?t=${Date.now()}` : filename;
+            const response = await fetch(url, {
+                cache: forceRefresh ? 'no-cache' : 'default',
+                headers: forceRefresh ? {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                } : {}
+            });
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             
@@ -252,6 +260,31 @@ class TournamentManager {
         this.setCurrentTournament(tournament);
         this.updateLastUpdatedTime();
         document.dispatchEvent(new CustomEvent('tournamentDataUpdated'));
+    }
+
+    // Manual refresh function that clears cache and reloads data
+    async manualRefresh() {
+        try {
+            console.log('Manual refresh initiated...');
+            
+            // Show loading indicator
+            this.showRefreshIndicator();
+            
+            // Force refresh with cache busting
+            await this.loadExcelData(true);
+            
+            // Update last modified time
+            this.updateLastUpdatedTime();
+            
+            // Refresh display
+            this.refreshDisplay();
+            
+            console.log('Manual refresh completed');
+            
+        } catch (error) {
+            console.error('Error during manual refresh:', error);
+            this.showError('Fehler beim Aktualisieren der Daten');
+        }
     }
 
     // Load SheetJS library dynamically
@@ -1485,3 +1518,52 @@ function generateStandingsTable(data, container) {
     container.innerHTML = '';
     container.appendChild(table);
 }
+
+// Add refresh button functionality
+function setupRefreshButtons() {
+    const refreshButtons = document.querySelectorAll('#refreshButton');
+    
+    refreshButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            // Add loading state to button
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+            button.disabled = true;
+            
+            try {
+                // Call manual refresh
+                await tournament.manualRefresh();
+                
+                // Show success feedback
+                button.innerHTML = '<i class="fas fa-check"></i> Refreshed!';
+                button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.disabled = false;
+                    button.style.background = '';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Refresh failed:', error);
+                
+                // Show error feedback
+                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                button.style.background = 'linear-gradient(135deg, #dc3545, #c82333)';
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.disabled = false;
+                    button.style.background = '';
+                }, 3000);
+            }
+        });
+    });
+}
+
+// Initialize refresh buttons when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    setupRefreshButtons();
+});

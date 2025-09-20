@@ -78,6 +78,7 @@ body {
     gap: 1rem;
     margin-bottom: 2rem;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 .top-button {
@@ -102,6 +103,58 @@ body {
 
 .top-button i {
     font-size: 1.1rem;
+}
+
+/* Refresh Button */
+.refresh-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.refresh-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    background: linear-gradient(135deg, #218838, #1e7e34);
+}
+
+.refresh-button:active {
+    transform: translateY(0);
+}
+
+.refresh-button i {
+    font-size: 1.1rem;
+    transition: transform 0.3s ease;
+}
+
+.refresh-button:hover i {
+    transform: rotate(180deg);
+}
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-header .page-title {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 200px;
 }
 
 /* Courts Section */
@@ -541,6 +594,35 @@ body {
     
     .info-grid {
         grid-template-columns: 1fr;
+    }
+    
+    /* Mobile responsive for refresh buttons */
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .page-header .page-title {
+        text-align: center;
+        margin-bottom: 0;
+    }
+    
+    .refresh-button {
+        width: 100%;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+    }
+    
+    .top-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .top-button, .refresh-button {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
     }
 }
 

@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Tableau - Beach Volleyball Turnier</title>
     <link rel="icon" type="image/png" href="ZuZU.png">
     <link rel="stylesheet" href="styles.css">
@@ -18,10 +21,16 @@
                 Zurück zur Startseite
             </a>
 
-            <h2 class="page-title">
-                <i class="fas fa-table"></i>
-                Tableau & Rangliste
-            </h2>
+            <div class="page-header">
+                <h2 class="page-title">
+                    <i class="fas fa-table"></i>
+                    Tableau & Rangliste
+                </h2>
+                <button id="refreshButton" class="refresh-button">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
 
             <div class="loading-section" id="loading">
                 <div class="loading"></div>
