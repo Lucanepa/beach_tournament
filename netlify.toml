@@ -1,0 +1,7 @@
+# Netlify config for the ZuZu Beach static site.
+# No build step — the repo root is published as-is. Serverless functions
+# (e.g. the admin PIN check) live in netlify/functions and are exposed at
+# /.netlify/functions/<name>.
+[build]
+  publish = "."
+  functions = "netlify/functions"

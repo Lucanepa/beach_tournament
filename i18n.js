@@ -36,6 +36,12 @@ const I18N = {
         'settings.saved': 'Gespeichert!',
         'settings.reset': 'Zurücksetzen',
         'page.settingsTitle': 'Einstellungen – ZuZu Beach Turnier',
+        'nav.admin': 'Admin',
+        'page.adminTitle': 'Admin – ZuZu Beach Turnier',
+        'admin.pinLabel': 'PIN eingeben',
+        'admin.unlock': 'Entsperren',
+        'admin.wrongPin': 'Falscher PIN',
+        'admin.lock': 'Sperren',
 
         'court.free': 'Frei',
 
@@ -125,6 +131,12 @@ const I18N = {
         'settings.saved': 'Saved!',
         'settings.reset': 'Reset',
         'page.settingsTitle': 'Settings – ZuZu Beach Tournament',
+        'nav.admin': 'Admin',
+        'page.adminTitle': 'Admin – ZuZu Beach Tournament',
+        'admin.pinLabel': 'Enter PIN',
+        'admin.unlock': 'Unlock',
+        'admin.wrongPin': 'Wrong PIN',
+        'admin.lock': 'Lock',
 
         'court.free': 'Free',
 

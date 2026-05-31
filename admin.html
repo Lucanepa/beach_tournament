@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="page.settingsTitle">Einstellungen – ZuZu Beach Turnier</title>
+    <title data-i18n="page.adminTitle">Admin – ZuZu Beach Turnier</title>
     <link rel="icon" type="image/png" href="ZuZU.png">
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="settings-page">
+<body class="admin-page">
     <header class="site-header">
         <div class="container">
             <a href="index.html" class="site-brand">
@@ -36,9 +36,20 @@
                     <i class="fas fa-gear"></i>
                     <span data-i18n="settings.heading">Einstellungen</span>
                 </h2>
+                <button type="button" id="lockBtn" class="btn btn-secondary admin-hidden" data-i18n="admin.lock">Sperren</button>
             </div>
 
-            <form id="settingsForm" class="settings-form">
+            <!-- PIN lock screen -->
+            <form id="lockForm" class="admin-lock">
+                <i class="fas fa-lock admin-lock-icon"></i>
+                <label for="pinInput" class="form-group-label" data-i18n="admin.pinLabel">PIN eingeben</label>
+                <input type="password" id="pinInput" class="form-input" inputmode="numeric" autocomplete="off" autofocus>
+                <p id="pinError" class="admin-error admin-hidden" data-i18n="admin.wrongPin">Falscher PIN</p>
+                <button type="submit" class="btn btn-primary" data-i18n="admin.unlock">Entsperren</button>
+            </form>
+
+            <!-- Settings (revealed after unlock) -->
+            <form id="settingsForm" class="settings-form admin-hidden">
                 <div class="form-group">
                     <label for="courtCount" data-i18n="settings.courtCount">Anzahl Courts</label>
                     <input type="number" id="courtCount" class="form-input" min="0" max="50" step="1">
@@ -74,25 +85,81 @@
     <script src="i18n.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const s = getSettings();
+            const lockForm = document.getElementById('lockForm');
+            const settingsForm = document.getElementById('settingsForm');
+            const lockBtn = document.getElementById('lockBtn');
+            const pinInput = document.getElementById('pinInput');
+            const pinError = document.getElementById('pinError');
+
+            function showPanel() {
+                lockForm.classList.add('admin-hidden');
+                settingsForm.classList.remove('admin-hidden');
+                lockBtn.classList.remove('admin-hidden');
+                populate();
+            }
+            function showLock() {
+                settingsForm.classList.add('admin-hidden');
+                lockBtn.classList.add('admin-hidden');
+                lockForm.classList.remove('admin-hidden');
+                pinInput.value = '';
+                pinInput.focus();
+            }
+
+            // Remember unlock on this device so the organizer isn't re-prompted.
+            if (localStorage.getItem('zuzu-admin-ok') === '1') showPanel();
+
+            lockForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                pinError.classList.add('admin-hidden');
+                const pin = pinInput.value;
+                try {
+                    const res = await fetch('/.netlify/functions/admin-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pin }),
+                    });
+                    if (res.ok) {
+                        localStorage.setItem('zuzu-admin-ok', '1');
+                        showPanel();
+                    } else {
+                        const data = await res.json().catch(() => ({}));
+                        pinError.textContent = data.error === 'not_configured'
+                            ? 'ADMIN_PIN is not set in Netlify (Site settings → Environment variables).'
+                            : t('admin.wrongPin');
+                        pinError.classList.remove('admin-hidden');
+                    }
+                } catch (err) {
+                    pinError.textContent = t('admin.wrongPin');
+                    pinError.classList.remove('admin-hidden');
+                }
+            });
+
+            lockBtn.addEventListener('click', function () {
+                localStorage.removeItem('zuzu-admin-ok');
+                showLock();
+            });
+
+            // ---- Settings form ----
             const courtCount = document.getElementById('courtCount');
             const refreshSeconds = document.getElementById('refreshSeconds');
             const tMen = document.getElementById('tMen');
             const tWomen = document.getElementById('tWomen');
 
-            // Populate from current settings
-            courtCount.value = s.courtCount;
-            refreshSeconds.value = s.refreshSeconds;
-            tMen.checked = s.tournaments.includes('men');
-            tWomen.checked = s.tournaments.includes('women');
-            document.querySelector(`input[name="defaultLang"][value="${s.defaultLang}"]`).checked = true;
+            function populate() {
+                const s = getSettings();
+                courtCount.value = s.courtCount;
+                refreshSeconds.value = s.refreshSeconds;
+                tMen.checked = s.tournaments.includes('men');
+                tWomen.checked = s.tournaments.includes('women');
+                const r = document.querySelector(`input[name="defaultLang"][value="${s.defaultLang}"]`);
+                if (r) r.checked = true;
+            }
 
-            document.getElementById('settingsForm').addEventListener('submit', function (e) {
+            settingsForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const tournaments = [];
                 if (tMen.checked) tournaments.push('men');
                 if (tWomen.checked) tournaments.push('women');
-                // Don't allow an empty selection — fall back to both.
                 if (tournaments.length === 0) { tournaments.push('men', 'women'); tMen.checked = tWomen.checked = true; }
                 const defaultLang = document.querySelector('input[name="defaultLang"]:checked').value;
 
@@ -102,7 +169,6 @@
                     tournaments: tournaments,
                     defaultLang: defaultLang,
                 });
-                // Apply the chosen default immediately on this device.
                 if (typeof setLang === 'function') setLang(defaultLang);
 
                 const btn = document.getElementById('saveBtn');
@@ -114,7 +180,7 @@
 
             document.getElementById('resetBtn').addEventListener('click', function () {
                 saveSettings(Object.assign({}, DEFAULT_SETTINGS));
-                location.reload();
+                populate();
             });
         });
     </script>
