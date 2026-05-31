@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page.settingsTitle">Einstellungen – ZuZu Beach Turnier</title>
+    <link rel="icon" type="image/png" href="ZuZU.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="settings-page">
+    <header class="site-header">
+        <div class="container">
+            <a href="index.html" class="site-brand">
+                <img src="ZuZU.png" alt="ZuZu Beach" class="site-brand-logo">
+                <span class="site-brand-text" data-i18n="brand.tagline">Turnier</span>
+            </a>
+            <div class="header-actions">
+                <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
+                    <button type="button" data-lang="de">DE</button>
+                    <button type="button" data-lang="en">EN</button>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="container">
+        <main class="main-content">
+            <a href="index.html" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span data-i18n="nav.back">Zurück zur Startseite</span>
+            </a>
+
+            <div class="page-header">
+                <h2 class="page-title">
+                    <i class="fas fa-gear"></i>
+                    <span data-i18n="settings.heading">Einstellungen</span>
+                </h2>
+            </div>
+
+            <form id="settingsForm" class="settings-form">
+                <div class="form-group">
+                    <label for="courtCount" data-i18n="settings.courtCount">Anzahl Courts</label>
+                    <input type="number" id="courtCount" class="form-input" min="0" max="50" step="1">
+                    <small class="form-hint" data-i18n="settings.courtCountHint">0 = automatisch aus den Daten</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="refreshSeconds" data-i18n="settings.refresh">Auto-Aktualisierung (Sekunden)</label>
+                    <input type="number" id="refreshSeconds" class="form-input" min="3" max="600" step="1">
+                </div>
+
+                <div class="form-group">
+                    <span class="form-group-label" data-i18n="settings.tournaments">Angezeigte Turniere</span>
+                    <label class="check-row"><input type="checkbox" id="tMen" value="men"> <span data-i18n="settings.men">Herren</span></label>
+                    <label class="check-row"><input type="checkbox" id="tWomen" value="women"> <span data-i18n="settings.women">Damen</span></label>
+                </div>
+
+                <div class="form-group">
+                    <span class="form-group-label" data-i18n="settings.defaultLang">Standardsprache</span>
+                    <label class="check-row"><input type="radio" name="defaultLang" value="de"> Deutsch (DE)</label>
+                    <label class="check-row"><input type="radio" name="defaultLang" value="en"> English (EN)</label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="resetBtn" class="btn btn-secondary" data-i18n="settings.reset">Zurücksetzen</button>
+                    <button type="submit" id="saveBtn" class="btn btn-primary" data-i18n="settings.save">Speichern</button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script src="settings.js"></script>
+    <script src="i18n.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const s = getSettings();
+            const courtCount = document.getElementById('courtCount');
+            const refreshSeconds = document.getElementById('refreshSeconds');
+            const tMen = document.getElementById('tMen');
+            const tWomen = document.getElementById('tWomen');
+
+            // Populate from current settings
+            courtCount.value = s.courtCount;
+            refreshSeconds.value = s.refreshSeconds;
+            tMen.checked = s.tournaments.includes('men');
+            tWomen.checked = s.tournaments.includes('women');
+            document.querySelector(`input[name="defaultLang"][value="${s.defaultLang}"]`).checked = true;
+
+            document.getElementById('settingsForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const tournaments = [];
+                if (tMen.checked) tournaments.push('men');
+                if (tWomen.checked) tournaments.push('women');
+                // Don't allow an empty selection — fall back to both.
+                if (tournaments.length === 0) { tournaments.push('men', 'women'); tMen.checked = tWomen.checked = true; }
+                const defaultLang = document.querySelector('input[name="defaultLang"]:checked').value;
+
+                saveSettings({
+                    courtCount: parseInt(courtCount.value, 10) || 0,
+                    refreshSeconds: parseInt(refreshSeconds.value, 10) || 10,
+                    tournaments: tournaments,
+                    defaultLang: defaultLang,
+                });
+                // Apply the chosen default immediately on this device.
+                if (typeof setLang === 'function') setLang(defaultLang);
+
+                const btn = document.getElementById('saveBtn');
+                const original = btn.textContent;
+                btn.textContent = t('settings.saved');
+                btn.style.background = 'var(--success)';
+                setTimeout(() => { btn.textContent = original; btn.style.background = ''; }, 1500);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', function () {
+                saveSettings(Object.assign({}, DEFAULT_SETTINGS));
+                location.reload();
+            });
+        });
+    </script>
+</body>
+</html>

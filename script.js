@@ -87,13 +87,14 @@ class TournamentManager {
 
     // Start auto-refresh to detect data changes
     startAutoRefresh() {
-        // Check for changes every 10 seconds (each check re-downloads the workbook)
+        // Re-download + re-parse the workbook on the configured interval.
+        const seconds = (typeof getSettings === 'function') ? getSettings().refreshSeconds : 10;
         this.refreshInterval = setInterval(async () => {
             try {
                 await this.checkForUpdates();
             } catch (error) {
             }
-        }, 10000);
+        }, Math.max(3, seconds) * 1000);
 
     }
 
@@ -683,80 +684,80 @@ async function loadIndexPage() {
 // Display courts with current and next matches
 function displayCourts(container) {
     container.innerHTML = '';
-    
-    if (!tournament.matches || tournament.matches.length === 0) {
-        container.innerHTML = `<div class="no-matches-court">${t('court.noMatches')}</div>`;
-        return;
+
+    const settings = (typeof getSettings === 'function') ? getSettings() : { courtCount: 0, tournaments: ['men', 'women'] };
+    const useMen = settings.tournaments.includes('men');
+    const useWomen = settings.tournaments.includes('women');
+
+    // Decide which courts to render: a fixed count from settings (so free courts
+    // also show up), or — when courtCount is 0 — derive them from the data.
+    let courts;
+    if (settings.courtCount > 0) {
+        courts = Array.from({ length: settings.courtCount }, (_, i) => `Court ${i + 1}`);
+    } else {
+        const allCourts = [
+            ...(useMen ? (tournament.menData?.courts || []) : []),
+            ...(useWomen ? (tournament.womenData?.courts || []) : []),
+        ];
+        courts = [...new Set(allCourts)].sort((a, b) => {
+            const numA = parseInt(String(a).replace('Court ', '')) || 0;
+            const numB = parseInt(String(b).replace('Court ', '')) || 0;
+            return numA - numB;
+        });
+        if (courts.length === 0) {
+            container.innerHTML = `<div class="no-matches-court">${t('court.noCourts')}</div>`;
+            return;
+        }
     }
-    
-    // Get all courts from both tournaments
-    const allCourts = [...(tournament.menData?.courts || []), ...(tournament.womenData?.courts || [])];
-    const courts = [...new Set(allCourts)].sort((a, b) => {
-        const numA = parseInt(a.replace('Court ', '')) || 0;
-        const numB = parseInt(b.replace('Court ', '')) || 0;
-        return numA - numB;
-    });
-    
-    
-    
-    if (courts.length === 0) {
-        container.innerHTML = `<div class="no-matches-court">${t('court.noCourts')}</div>`;
-        return;
-    }
-    
-    // Create court cards for each court that has matches
+
     courts.forEach(court => {
-        // Get matches for this court from both tournaments
-        const menMatches = tournament.menData?.matches?.filter(match => match.court === court) || [];
-        const womenMatches = tournament.womenData?.matches?.filter(match => match.court === court) || [];
+        // Matches for this court, from the tournaments selected in settings.
+        const menMatches = useMen ? (tournament.menData?.matches?.filter(m => m.court === court) || []) : [];
+        const womenMatches = useWomen ? (tournament.womenData?.matches?.filter(m => m.court === court) || []) : [];
         const courtMatches = [...menMatches, ...womenMatches];
-        
+
         const courtCard = document.createElement('div');
         courtCard.className = 'court-card';
-        
-        // Determine tournament type based on matches
+
         const hasMenMatches = menMatches.length > 0;
         const hasWomenMatches = womenMatches.length > 0;
-        
         if (hasMenMatches && !hasWomenMatches) {
             courtCard.classList.add('men-tournament');
         } else if (hasWomenMatches && !hasMenMatches) {
             courtCard.classList.add('women-tournament');
         } else if (hasMenMatches && hasWomenMatches) {
-            // Mixed court - use men's style as default, or could be a special mixed style
             courtCard.classList.add('men-tournament');
         }
-        
-        // Sort matches by time
-        courtMatches.sort((a, b) => {
-            const timeA = a.time || '23:59';
-            const timeB = b.time || '23:59';
-            return timeA.localeCompare(timeB);
-        });
-        
-        // Find current match (open status)
+
+        courtMatches.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+
         const currentMatch = courtMatches.find(match => match.status === 'open');
-        
-        // Find next match (upcoming status)
         const nextMatch = courtMatches.find(match => match.status === 'upcoming');
-        
-        // Ensure court is a string and extract number
+
+        // No current (open) match → the court is free: render it dimmed.
+        if (!currentMatch) courtCard.classList.add('court-free');
+
         const courtStr = String(court || 'Court 1');
         const courtNumber = courtStr.replace('Court ', '') || '1';
-        
-        
+
+        let body;
+        if (currentMatch) {
+            body = createMatchSlot(currentMatch, 'current') + (nextMatch ? createMatchSlot(nextMatch, 'next') : '');
+        } else if (nextMatch) {
+            body = `<div class="court-free-label">${t('court.free')}</div>` + createMatchSlot(nextMatch, 'next');
+        } else {
+            body = `<div class="court-free-label">${t('court.free')}</div>` +
+                   `<div class="no-matches-court">${t('court.noMatchesScheduled')}</div>`;
+        }
+
         courtCard.innerHTML = `
             <div class="court-header">
-                <div class="court-number">${courtNumber}</div>
-                <div class="court-title">${courtStr}</div>
+                <div class="court-number">${escapeHtml(courtNumber)}</div>
+                <div class="court-title">${escapeHtml(courtStr)}</div>
             </div>
-            <div class="court-matches">
-                ${currentMatch ? createMatchSlot(currentMatch, 'current') : ''}
-                ${nextMatch ? createMatchSlot(nextMatch, 'next') : ''}
-                ${!currentMatch && !nextMatch ? `<div class="no-matches-court">${t('court.noMatchesScheduled')}</div>` : ''}
-            </div>
+            <div class="court-matches">${body}</div>
         `;
-        
+
         container.appendChild(courtCard);
     });
 }

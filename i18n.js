@@ -22,6 +22,22 @@ const I18N = {
         'nav.tableau': 'Tableau',
         'nav.refresh': 'Aktualisieren',
         'nav.back': 'Zurück zur Startseite',
+        'nav.settings': 'Einstellungen',
+
+        'settings.heading': 'Einstellungen',
+        'settings.courtCount': 'Anzahl Courts',
+        'settings.courtCountHint': '0 = automatisch aus den Daten',
+        'settings.refresh': 'Auto-Aktualisierung (Sekunden)',
+        'settings.tournaments': 'Angezeigte Turniere',
+        'settings.men': 'Herren',
+        'settings.women': 'Damen',
+        'settings.defaultLang': 'Standardsprache',
+        'settings.save': 'Speichern',
+        'settings.saved': 'Gespeichert!',
+        'settings.reset': 'Zurücksetzen',
+        'page.settingsTitle': 'Einstellungen – ZuZu Beach Turnier',
+
+        'court.free': 'Frei',
 
         'heading.tableau': 'Tableau & Rangliste',
         'heading.allGames': 'Alle Spiele',
@@ -95,6 +111,22 @@ const I18N = {
         'nav.tableau': 'Tableau',
         'nav.refresh': 'Refresh',
         'nav.back': 'Back to home',
+        'nav.settings': 'Settings',
+
+        'settings.heading': 'Settings',
+        'settings.courtCount': 'Number of courts',
+        'settings.courtCountHint': '0 = automatic from data',
+        'settings.refresh': 'Auto-refresh (seconds)',
+        'settings.tournaments': 'Tournaments shown',
+        'settings.men': 'Men',
+        'settings.women': 'Women',
+        'settings.defaultLang': 'Default language',
+        'settings.save': 'Save',
+        'settings.saved': 'Saved!',
+        'settings.reset': 'Reset',
+        'page.settingsTitle': 'Settings – ZuZu Beach Tournament',
+
+        'court.free': 'Free',
 
         'heading.tableau': 'Tableau & standings',
         'heading.allGames': 'All games',
@@ -165,7 +197,13 @@ const DEFAULT_LANG = 'de';
 
 function getLang() {
     const stored = (() => { try { return localStorage.getItem('zuzu-lang'); } catch (e) { return null; } })();
-    return SUPPORTED_LANGS.includes(stored) ? stored : DEFAULT_LANG;
+    if (SUPPORTED_LANGS.includes(stored)) return stored;
+    // No per-visitor choice yet → fall back to the organizer's default (settings.js).
+    if (typeof getSettings === 'function') {
+        const d = getSettings().defaultLang;
+        if (SUPPORTED_LANGS.includes(d)) return d;
+    }
+    return DEFAULT_LANG;
 }
 
 // Translate a key for the current language, interpolating {placeholder} params.
