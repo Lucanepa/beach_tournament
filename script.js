@@ -1,5 +1,53 @@
 // Beach Volleyball Tournament Management System
-// Reads Excel file directly using SheetJS
+// Reads Excel data directly using SheetJS
+
+// === Data source configuration =============================================
+// By default the app reads the bundled .xlsx files next to this script.
+//
+// To read a LIVE Google Sheet instead (edits show up within seconds, no
+// re-deploy needed):
+//   1. In Google Sheets: File > Share > "Anyone with the link" > Viewer.
+//   2. Copy the spreadsheet ID from its URL — the long part between /d/ and /edit:
+//        https://docs.google.com/spreadsheets/d/<THIS_IS_THE_ID>/edit
+//   3. Paste it as googleId below. The sheet must contain the same tabs the
+//      parser expects: "Anmeldung", "Match" (or "Resultate") and "Rangliste".
+//
+// Leave googleId as null to keep using the local file.
+//
+// `label` is what shows in the tournament dropdown. For a new tournament you
+// only edit this block — e.g. swap to U20M / U20F by changing googleId (or
+// localFile) and label. The internal keys "men"/"women" can stay as-is; they
+// are just slots for the first and second tournament.
+const DATA_SOURCES = {
+    men:   { googleId: '1iTfEsqh3IfRWuk-ajwDwyPvAP7wJvIUVLUpvcH-qawM', localFile: 'b2m.xlsx', label: 'U20 Herren (U20M)' },
+    women: { googleId: '1yrTfHietiohzpGIVlMJIjzZoNoNeme1sZTdXG50JX4c', localFile: 'b3f.xlsx', label: 'U20 Damen (U20F)' },
+};
+
+// Populate a tournament <select> from DATA_SOURCES so labels live in one place.
+function populateTournamentFilter() {
+    const select = document.getElementById('tournamentFilter');
+    if (!select) return;
+    const current = select.value || 'men';
+    select.innerHTML = Object.keys(DATA_SOURCES).map(key => {
+        const label = DATA_SOURCES[key].label || key;
+        return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    // Preserve the previously selected tournament if it still exists
+    if ([...select.options].some(o => o.value === current)) {
+        select.value = current;
+    }
+}
+
+// Build the URL to fetch a tournament's workbook, with optional cache-busting.
+function buildDataUrl(tournament, bust) {
+    const src = DATA_SOURCES[tournament] || DATA_SOURCES.men;
+    const cb = bust ? `cb=${Date.now()}` : '';
+    if (src.googleId) {
+        // Google's export endpoint always returns the full, live workbook.
+        return `https://docs.google.com/spreadsheets/d/${src.googleId}/export?format=xlsx${cb ? `&${cb}` : ''}`;
+    }
+    return cb ? `${src.localFile}?${cb}` : src.localFile;
+}
 
 class TournamentManager {
     constructor() {
@@ -25,16 +73,16 @@ class TournamentManager {
         }
     }
 
-    // Start auto-refresh to detect Excel file changes
+    // Start auto-refresh to detect data changes
     startAutoRefresh() {
-        // Check for changes every 5 seconds
+        // Check for changes every 10 seconds (each check re-downloads the workbook)
         this.refreshInterval = setInterval(async () => {
             try {
                 await this.checkForUpdates();
             } catch (error) {
             }
-        }, 5000);
-        
+        }, 10000);
+
     }
 
     // Stop auto-refresh
@@ -45,34 +93,25 @@ class TournamentManager {
         }
     }
 
-    // Check if Excel file has been updated
+    // Check if the underlying data has changed (works for both local files and
+    // Google Sheets, which don't expose a reliable Last-Modified header).
     async checkForUpdates() {
         try {
-            // Check both tournament files
-            const files = ['b2m.xlsx', 'b3f.xlsx'];
-            let hasUpdates = false;
-            
-            for (const file of files) {
-                const response = await fetch(file, { method: 'HEAD' });
-                
-                if (response.ok) {
-                    const lastModified = response.headers.get('Last-Modified');
-                    const key = `lastModified_${file}`;
-                    
-                    if (this[key] && lastModified !== this[key]) {
-                        hasUpdates = true;
-                    }
-                    
-                    this[key] = lastModified;
-                }
-            }
-            
-            if (hasUpdates) {
-                await this.loadExcelData();
+            // Re-fetch and re-parse the data (cache-busted), then compare a
+            // signature of the parsed matches to detect real changes.
+            await this.loadExcelData(true);
+
+            const signature = JSON.stringify({
+                men: this.menData.matches,
+                women: this.womenData.matches
+            });
+
+            if (this.dataSignature && signature !== this.dataSignature) {
                 this.refreshDisplay();
             }
+            this.dataSignature = signature;
         } catch (error) {
-            // File might not be accessible, ignore silently
+            // Data might be temporarily unreachable, ignore silently
         }
     }
 
@@ -202,14 +241,12 @@ class TournamentManager {
     // Load data for a specific tournament
     async loadTournamentData(tournament, filename, forceRefresh = false) {
         try {
-            // Add cache busting parameter if force refresh is requested
-            const url = forceRefresh ? `${filename}?t=${Date.now()}` : filename;
+            // Resolve the source (local file or live Google Sheet) with cache busting.
+            // No custom request headers, so cross-origin Google fetches don't trigger
+            // a CORS preflight.
+            const url = buildDataUrl(tournament, forceRefresh);
             const response = await fetch(url, {
-                cache: forceRefresh ? 'no-cache' : 'default',
-                headers: forceRefresh ? {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache'
-                } : {}
+                cache: forceRefresh ? 'no-store' : 'default'
             });
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
@@ -222,11 +259,13 @@ class TournamentManager {
                 teams = this.parseTeamsFromSheet(workbook.Sheets['Anmeldung']);
             }
             
-            // Load matches from Match sheet (preferred) or Resultate sheet
+            // Load matches from the normalized "Match" sheet (preferred) or, when it
+            // doesn't exist (e.g. live Google Sheets), the raw "Resultate" sheet.
+            // Each layout has a different column arrangement.
             if (workbook.Sheets['Match']) {
-                matches = this.parseMatchesFromSheet(workbook.Sheets['Match'], tournament);
+                matches = this.parseMatchesFromSheet(workbook.Sheets['Match'], tournament, 'match');
             } else if (workbook.Sheets['Resultate']) {
-                matches = this.parseMatchesFromSheet(workbook.Sheets['Resultate'], tournament);
+                matches = this.parseMatchesFromSheet(workbook.Sheets['Resultate'], tournament, 'resultate');
             } else {
             }
             
@@ -328,43 +367,70 @@ class TournamentManager {
         return teams;
     }
 
-    // Parse matches from Resultate sheet
-    parseMatchesFromSheet(sheet, tournament = 'men') {
+    // Parse matches from either the normalized "Match" sheet or the raw "Resultate" sheet.
+    // The two layouts differ: "Resultate" has a "vs" separator column (so Team 2, Result
+    // and the set scores are shifted), and it has no status/sex columns (those are derived).
+    parseMatchesFromSheet(sheet, tournament = 'men', layout = 'match') {
         const matches = [];
         const range = XLSX.utils.decode_range(sheet['!ref']);
-        
-        
+
+        // Column index map per layout (0-indexed). null = column not present.
+        const COLS = {
+            match: {
+                matchNumber: 0, round: 1, court: 2, time: 3, team1: 4, team2: 5,
+                result: 6, resultTeam2: 7,
+                set1Team1: 9, set1Team2: 10, set2Team1: 11, set2Team2: 12, set3Team1: 13, set3Team2: 14,
+                status: 17, sex: 18
+            },
+            resultate: {
+                matchNumber: 0, round: 1, court: 2, time: 3, team1: 4, team2: 6,
+                result: 7, resultTeam2: 9,
+                set1Team1: 11, set1Team2: 13, set2Team1: 14, set2Team2: 16, set3Team1: 17, set3Team2: 19,
+                status: null, sex: null
+            }
+        };
+        const map = COLS[layout] || COLS.match;
+        const cell = (row, key) => (map[key] === null || map[key] === undefined)
+            ? undefined
+            : sheet[XLSX.utils.encode_cell({ r: row, c: map[key] })]?.v;
+
         for (let row = 1; row <= range.e.r; row++) {
-            // Match sheet column mapping:
-            // A = MatchNumber, B = Round, C = Court, D = Startzeit, E = Team 1, F = Team 2, G = Result, N = status
-            const matchNumber = sheet[XLSX.utils.encode_cell({ r: row, c: 0 })]?.v; // Column A
-            const round = sheet[XLSX.utils.encode_cell({ r: row, c: 1 })]?.v; // Column B
-            const court = sheet[XLSX.utils.encode_cell({ r: row, c: 2 })]?.v; // Column C
-            const time = sheet[XLSX.utils.encode_cell({ r: row, c: 3 })]?.v; // Column D
-            const team1 = sheet[XLSX.utils.encode_cell({ r: row, c: 4 })]?.v; // Column E
-            const team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 5 })]?.v; // Column F
-            const result = sheet[XLSX.utils.encode_cell({ r: row, c: 6 })]?.v; // Column G
-            const status = sheet[XLSX.utils.encode_cell({ r: row, c: 17 })]?.v; // Column R (status) - 14th column (0-indexed)
-            const sex = sheet[XLSX.utils.encode_cell({ r: row, c: 18 })]?.v; // Column S (sex)
-            
-            // Get detailed scores from set columns
-            const set1Team1 = sheet[XLSX.utils.encode_cell({ r: row, c: 8 })]?.v; // Column I (1. Set Team 1)
-            const set1Team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 9 })]?.v; // Column J (1. Set Team 2)
-            const set2Team1 = sheet[XLSX.utils.encode_cell({ r: row, c: 10 })]?.v; // Column K (2. Set Team 1)
-            const set2Team2 = sheet[XLSX.utils.encode_cell({ r: row, c: 11 })]?.v; // Column L (2. Set Team 2)
-            
+            const matchNumber = cell(row, 'matchNumber');
+            const round = cell(row, 'round');
+            const court = cell(row, 'court');
+            const time = cell(row, 'time');
+            const team1 = cell(row, 'team1');
+            const team2 = cell(row, 'team2');
+            const result = cell(row, 'result');           // sets won by Team 1
+            const resultTeam2 = cell(row, 'resultTeam2');  // sets won by Team 2
+            const status = cell(row, 'status');
+            const sex = cell(row, 'sex');
+
+            // Get detailed scores from the set columns
+            const set1Team1 = cell(row, 'set1Team1');
+            const set1Team2 = cell(row, 'set1Team2');
+            const set2Team1 = cell(row, 'set2Team1');
+            const set2Team2 = cell(row, 'set2Team2');
+            const set3Team1 = cell(row, 'set3Team1');
+            const set3Team2 = cell(row, 'set3Team2');
+
             // Build detailed score string
             let fullScore = '';
-            if (set1Team1 && set1Team2 && (set1Team1 !== 0 || set1Team2 !== 0)) {
+            if ((set1Team1 || set1Team2) && (set1Team1 != 0 || set1Team2 != 0)) {
                 fullScore += `${set1Team1} ${set1Team2}`;
             }
-            if (set2Team1 && set2Team2 && (set2Team1 !== 0 || set2Team2 !== 0)) {
+            if ((set2Team1 || set2Team2) && (set2Team1 != 0 || set2Team2 != 0)) {
                 fullScore += (fullScore ? ' ' : '') + `${set2Team1} ${set2Team2}`;
             }
+            if ((set3Team1 || set3Team2) && (set3Team1 != 0 || set3Team2 != 0)) {
+                fullScore += (fullScore ? ' ' : '') + `${set3Team1} ${set3Team2}`;
+            }
             
-            // For tableau, we want to show ALL matches regardless of court
-            // Only skip if court is completely missing (undefined/null)
-            if (court === undefined || court === null) {
+            // Skip only genuinely empty rows. A match is kept even if it has no court
+            // assigned yet (court shows as "TBD") so the bracket and full schedule
+            // still list it with real team names.
+            const isBlank = v => v === undefined || v === null || String(v).trim() === '';
+            if (isBlank(team1) && isBlank(team2) && isBlank(matchNumber)) {
                 continue;
             }
             
@@ -397,7 +463,14 @@ class TournamentManager {
             // Skip matches with blank status only for index page, not for tableau
             // For tableau, we want to show all matches regardless of status
             
-            // Use status from Match sheet - respect Excel formula logic
+            // A match counts as played once any set score or sets-won total is recorded.
+            const hasResult = (fullScore.trim() !== '') ||
+                (result !== undefined && result !== null && result !== '' && result != 0) ||
+                (resultTeam2 !== undefined && resultTeam2 !== null && resultTeam2 !== '' && resultTeam2 != 0);
+
+            // Determine status. The "Match" sheet carries an explicit status column;
+            // the raw "Resultate" sheet does not, so we derive it (and the per-court
+            // pass below promotes the earliest unplayed match to "open"/current).
             let matchStatus = 'upcoming';
             if (status && status.toString().trim() !== '') {
                 const statusStr = status.toString().trim().toLowerCase();
@@ -410,8 +483,9 @@ class TournamentManager {
                 } else {
                     matchStatus = 'upcoming'; // Default for unknown statuses
                 }
+            } else if (hasResult) {
+                matchStatus = 'concluded';
             } else {
-                // No status from Excel - default to upcoming for tableau display
                 matchStatus = 'upcoming';
             }
             
@@ -426,6 +500,9 @@ class TournamentManager {
                 status: matchStatus,
                 result: result || fullScore.trim() || null,
                 score: fullScore.trim() || null,
+                // Authoritative sets-won from the result columns (G/H), used by the bracket
+                team1Sets: (result !== undefined && result !== null && result !== '') ? result : null,
+                team2Sets: (resultTeam2 !== undefined && resultTeam2 !== null && resultTeam2 !== '') ? resultTeam2 : null,
                 sex: sex ? sex.toString().toUpperCase() : (tournament === 'men' ? 'M' : 'F')
             });
         }
@@ -442,36 +519,24 @@ class TournamentManager {
             }
         });
         
-        // Sort matches by time within each court and update status
+        // Sort matches by time within each court, then ensure each court has a
+        // "current" (open) match: if none is explicitly open, the earliest match
+        // that isn't concluded becomes the current one. This drives the index
+        // page's "Aktuell / Nächste" display when the source has no status column.
         Object.keys(courtGroups).forEach(court => {
-            courtGroups[court].sort((a, b) => {
+            const group = courtGroups[court];
+            group.sort((a, b) => {
                 const timeA = a.time || '23:59';
                 const timeB = b.time || '23:59';
                 return timeA.localeCompare(timeB);
             });
-            
-            
-            // Respect Excel status values - only override if Excel status is not specific
-            for (let i = 0; i < courtGroups[court].length; i++) {
-                const currentMatch = courtGroups[court][i];
-                const originalStatus = currentMatch.status;
-                
-                // Only override if the Excel status is generic 'upcoming' or if we need to determine based on previous game
-                if (originalStatus === 'upcoming' && i > 0) {
-                    const previousMatch = courtGroups[court][i - 1];
-                    if (previousMatch.status === 'concluded') {
-                        // Previous game is concluded, so this one stays upcoming
-                    } else if (previousMatch.status === 'open') {
-                        // Previous game is open, so this one is upcoming
-                    }
-                } else if (originalStatus === 'concluded' && currentMatch.result && currentMatch.result.toString().trim() !== '') {
-                    // Keep concluded status if it has a result
-                } else if (originalStatus === 'open') {
-                    // Keep open status from Excel
-                }
+
+            if (!group.some(m => m.status === 'open')) {
+                const current = group.find(m => m.status !== 'concluded');
+                if (current) current.status = 'open';
             }
         });
-        
+
         return matches;
     }
 
@@ -556,6 +621,16 @@ class TournamentManager {
         console.error(message);
         // You could implement a toast notification here
     }
+}
+
+// Escape text before inserting it into HTML via innerHTML
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Initialize tournament manager
@@ -689,17 +764,17 @@ function displayCourts(container) {
              <div class="match-teams-compact">
                  <div class="team-row-compact">
                      <span class="team-label-compact">A</span>
-                     <span class="team-name-compact">${team1Name}</span>
+                     <span class="team-name-compact">${escapeHtml(team1Name)}</span>
                  </div>
                  <div class="team-row-compact">
                      <span class="team-label-compact">B</span>
-                     <span class="team-name-compact">${team2Name}</span>
+                     <span class="team-name-compact">${escapeHtml(team2Name)}</span>
                  </div>
              </div>
              <div class="match-info-compact">
-                 <span class="match-time-compact">${match.time || 'TBD'}</span>
-                 <span class="match-number-compact">Match ${match.matchNumber || 'TBD'}</span>
-                 <span class="match-sex-compact">${matchSex}</span>
+                 <span class="match-time-compact">${escapeHtml(match.time || 'TBD')}</span>
+                 <span class="match-number-compact">Match ${escapeHtml(match.matchNumber || 'TBD')}</span>
+                 <span class="match-sex-compact">${escapeHtml(matchSex)}</span>
              </div>
          </div>
      `;
@@ -746,7 +821,8 @@ async function loadAllGames() {
             displayMatches(sortedMatches, matchesList);
         }
         
-        // Add tournament filter event listener
+        // Build the tournament dropdown from config, then wire its change listener
+        populateTournamentFilter();
         const tournamentFilter = document.getElementById('tournamentFilter');
         if (tournamentFilter) {
             tournamentFilter.addEventListener('change', (e) => {
@@ -889,36 +965,36 @@ function displayMatches(matches, container) {
                  <div class="match-teams">
                      <div class="team-row">
                          <span class="team-label">A</span>
-                         <span class="team-name">${team1Name}</span>
+                         <span class="team-name">${escapeHtml(team1Name)}</span>
                      </div>
                      <div class="team-row">
                          <span class="team-label">B</span>
-                         <span class="team-name">${team2Name}</span>
+                         <span class="team-name">${escapeHtml(team2Name)}</span>
                      </div>
                  </div>
                 <div class="match-info">
                     <div class="match-highlight">
                         <div class="highlight-item court-highlight">
                             <i class="fas fa-map-marker-alt"></i>
-                            <span>${match.court || 'TBD'}</span>
+                            <span>${escapeHtml(match.court || 'TBD')}</span>
                         </div>
                         <div class="highlight-item time-highlight">
                             <i class="fas fa-clock"></i>
-                            <span>${match.time || 'TBD'}</span>
+                            <span>${escapeHtml(match.time || 'TBD')}</span>
                         </div>
                     </div>
                     <div class="match-details">
                         <div class="match-number">
                             <i class="fas fa-hashtag"></i>
-                            <span>Match ${match.matchNumber || 'TBD'}</span>
+                            <span>Match ${escapeHtml(match.matchNumber || 'TBD')}</span>
                         </div>
                         <div class="match-round">
                             <i class="fas fa-trophy"></i>
-                            <span>Runde ${match.round || 'TBD'}</span>
+                            <span>Runde ${escapeHtml(match.round || 'TBD')}</span>
                         </div>
                         <div class="match-sex">
                             <i class="fas fa-mars"></i>
-                            <span>${match.sex || 'M'}</span>
+                            <span>${escapeHtml(match.sex || 'M')}</span>
                         </div>
                         <div class="match-status ${statusClass}">
                             <i class="fas fa-circle"></i>
@@ -958,7 +1034,8 @@ async function loadTableau() {
         // Show tableau
         tableauSection.style.display = 'block';
         
-        // Add tournament filter event listener
+        // Build the tournament dropdown from config, then wire its change listener
+        populateTournamentFilter();
         const tournamentFilter = document.getElementById('tournamentFilter');
         if (tournamentFilter) {
             tournamentFilter.addEventListener('change', (e) => {
@@ -1114,6 +1191,9 @@ function createMatchesForRange(start, end, existingMatches) {
 
 // Add zoom controls to bracket
 function addZoomControls(bracket) {
+    // Remove any existing zoom controls so they don't stack up on each refresh
+    document.querySelectorAll('.bracket-zoom-controls').forEach(el => el.remove());
+
     const zoomControls = document.createElement('div');
     zoomControls.className = 'bracket-zoom-controls';
     zoomControls.innerHTML = `
@@ -1147,13 +1227,6 @@ function addZoomControls(bracket) {
         currentZoom = 1;
         bracket.style.transform = 'scale(1)';
         zoomLevel.textContent = '100%';
-    });
-    
-    // Clean up zoom controls when bracket is regenerated
-    bracket.addEventListener('DOMNodeRemoved', () => {
-        if (document.body.contains(zoomControls)) {
-            document.body.removeChild(zoomControls);
-        }
     });
 }
 
@@ -1198,9 +1271,14 @@ function createMatch(match, isFinals = false) {
     // Parse score if available
     let team1Score = '-';
     let team2Score = '-';
-    if (match.score) {
+    // Prefer the authoritative sets-won values from the result columns (G/H)
+    if (match.team1Sets !== null && match.team1Sets !== undefined &&
+        match.team2Sets !== null && match.team2Sets !== undefined) {
+        team1Score = match.team1Sets.toString();
+        team2Score = match.team2Sets.toString();
+    } else if (match.score) {
         const scoreStr = match.score.toString().trim();
-        
+
         // Try simple format like "0 2" (sets won by each team)
         const simpleMatch = scoreStr.match(/^(\d+)\s+(\d+)$/);
         if (simpleMatch) {
@@ -1239,8 +1317,8 @@ function createMatch(match, isFinals = false) {
     const team1Div = document.createElement('div');
     team1Div.className = 'team';
     team1Div.innerHTML = `
-        <span class="team-name">${match.team1?.teamName || 'TBD'}</span>
-        <span class="score">${team1Score}</span>
+        <span class="team-name">${escapeHtml(match.team1?.teamName || 'TBD')}</span>
+        <span class="score">${escapeHtml(team1Score)}</span>
     `;
     matchDiv.appendChild(team1Div);
     
@@ -1248,8 +1326,8 @@ function createMatch(match, isFinals = false) {
     const team2Div = document.createElement('div');
     team2Div.className = 'team';
     team2Div.innerHTML = `
-        <span class="team-name">${match.team2?.teamName || 'TBD'}</span>
-        <span class="score">${team2Score}</span>
+        <span class="team-name">${escapeHtml(match.team2?.teamName || 'TBD')}</span>
+        <span class="score">${escapeHtml(team2Score)}</span>
     `;
     matchDiv.appendChild(team2Div);
     
@@ -1441,8 +1519,8 @@ async function loadStandings() {
         const standingsContainer = document.getElementById('standingsTable');
         if (!standingsContainer) return;
 
-        // Read Excel file and get Rangliste sheet
-        const response = await fetch('b2m.xlsx');
+        // Read the source (local file or Google Sheet) matching the selected tournament
+        const response = await fetch(buildDataUrl(tournament.currentTournament, true), { cache: 'no-store' });
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         
