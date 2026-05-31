@@ -6,33 +6,45 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>ZuZu Beach Turnier</title>
+    <title data-i18n="page.indexTitle">ZuZu Beach Turnier</title>
     <link rel="icon" type="image/png" href="ZuZU.png">
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="index-page">
+    <header class="site-header">
+        <div class="container">
+            <a href="index.html" class="site-brand">
+                <img src="ZuZU.png" alt="ZuZu Beach" class="site-brand-logo">
+                <span class="site-brand-text" data-i18n="brand.tagline">Turnier</span>
+            </a>
+            <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
+                <button type="button" data-lang="de">DE</button>
+                <button type="button" data-lang="en">EN</button>
+            </div>
+        </div>
+    </header>
     <div class="container">
         <main class="main-content">
             <div class="top-buttons">
                 <a href="all_games.html" class="top-button">
                     <i class="fas fa-list"></i>
-                    All Games
+                    <span data-i18n="nav.allGames">All Games</span>
                 </a>
                 <a href="tableau.html" class="top-button">
                     <i class="fas fa-table"></i>
-                    Tableau
+                    <span data-i18n="nav.tableau">Tableau</span>
                 </a>
                 <button id="refreshButton" class="top-button refresh-button">
                     <i class="fas fa-sync-alt"></i>
-                    Refresh
+                    <span data-i18n="nav.refresh">Refresh</span>
                 </button>
             </div>
 
             <div class="loading-section" id="loading">
                 <div class="loading"></div>
-                <p>Lade Spieldaten...</p>
+                <p data-i18n="loading.matches">Lade Spieldaten...</p>
             </div>
 
         <div class="courts-section" id="courtsSection" style="display: none;">
@@ -43,14 +55,15 @@
 
             <div class="no-matches" id="noMatches" style="display: none;">
                 <i class="fas fa-calendar-times"></i>
-                <h3>Keine Spiele verfügbar</h3>
-                <p>Derzeit sind keine Spiele geplant.</p>
+                <h3 data-i18n="empty.noMatchesTitle">Keine Spiele verfügbar</h3>
+                <p data-i18n="empty.noMatchesIndex">Derzeit sind keine Spiele geplant.</p>
             </div>
 
            
         </main>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="script.js"></script>
     <script>
         // Load index page when DOM is loaded

@@ -18,10 +18,22 @@
 // only edit this block — e.g. swap to U20M / U20F by changing googleId (or
 // localFile) and label. The internal keys "men"/"women" can stay as-is; they
 // are just slots for the first and second tournament.
+// `label` may be a plain string (shown as-is) or a { de, en } object so the
+// dropdown follows the selected language.
 const DATA_SOURCES = {
-    men:   { googleId: '1iTfEsqh3IfRWuk-ajwDwyPvAP7wJvIUVLUpvcH-qawM', localFile: 'b2m.xlsx', label: 'U20 Herren (U20M)' },
-    women: { googleId: '1yrTfHietiohzpGIVlMJIjzZoNoNeme1sZTdXG50JX4c', localFile: 'b3f.xlsx', label: 'U20 Damen (U20F)' },
+    men:   { googleId: '1iTfEsqh3IfRWuk-ajwDwyPvAP7wJvIUVLUpvcH-qawM', localFile: 'b2m.xlsx', label: { de: 'U20 Herren (U20M)', en: 'U20 Men (U20M)' } },
+    women: { googleId: '1yrTfHietiohzpGIVlMJIjzZoNoNeme1sZTdXG50JX4c', localFile: 'b3f.xlsx', label: { de: 'U20 Damen (U20F)', en: 'U20 Women (U20F)' } },
 };
+
+// Resolve a DATA_SOURCES label (string or { de, en }) for the current language.
+function tournamentLabel(key) {
+    const raw = DATA_SOURCES[key] && DATA_SOURCES[key].label;
+    if (raw && typeof raw === 'object') {
+        const lang = (typeof getLang === 'function') ? getLang() : 'de';
+        return raw[lang] || raw.de || key;
+    }
+    return raw || key;
+}
 
 // Populate a tournament <select> from DATA_SOURCES so labels live in one place.
 function populateTournamentFilter() {
@@ -29,7 +41,7 @@ function populateTournamentFilter() {
     if (!select) return;
     const current = select.value || 'men';
     select.innerHTML = Object.keys(DATA_SOURCES).map(key => {
-        const label = DATA_SOURCES[key].label || key;
+        const label = tournamentLabel(key);
         return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
     }).join('');
     // Preserve the previously selected tournament if it still exists
@@ -69,7 +81,7 @@ class TournamentManager {
             this.startAutoRefresh();
         } catch (error) {
             console.error('Error initializing tournament:', error);
-            this.showError('Fehler beim Laden der Turnierdaten');
+            this.showError(t('error.loadData'));
         }
     }
 
@@ -138,13 +150,14 @@ class TournamentManager {
     // Update the last updated timestamp
     updateLastUpdatedTime() {
         const now = new Date();
-        const timeString = now.toLocaleString('de-DE', {
+        const timeString = now.toLocaleString('de-CH', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit'
+            second: '2-digit',
+            hour12: false
         });
         
         // Update or create the last updated element
@@ -157,10 +170,10 @@ class TournamentManager {
                 bottom: 10px;
                 left: 50%;
                 transform: translateX(-50%);
-                background: rgba(30, 58, 138, 0.9);
+                background: rgba(22, 35, 63, 0.92);
                 color: white;
                 padding: 8px 16px;
-                border-radius: 20px;
+                border-radius: 9999px;
                 font-size: 12px;
                 font-weight: 500;
                 z-index: 1000;
@@ -170,8 +183,8 @@ class TournamentManager {
             `;
             document.body.appendChild(lastUpdatedElement);
         }
-        
-        lastUpdatedElement.innerHTML = `<i class="fas fa-clock"></i> Letzte Aktualisierung: ${timeString}`;
+
+        lastUpdatedElement.innerHTML = `<i class="fas fa-clock"></i> ${t('updated.prefix')} ${timeString}`;
     }
 
     // Show a small refresh indicator
@@ -185,22 +198,22 @@ class TournamentManager {
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                background: #ff6b6b;
+                background: #ef5a45;
                 color: white;
                 padding: 8px 16px;
-                border-radius: 20px;
+                border-radius: 9999px;
                 font-size: 14px;
                 font-weight: 600;
                 z-index: 1000;
-                box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+                box-shadow: 0 4px 12px rgba(239, 90, 69, 0.35);
                 display: flex;
                 align-items: center;
                 gap: 8px;
             `;
             document.body.appendChild(indicator);
         }
-        
-        indicator.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Daten aktualisiert';
+
+        indicator.innerHTML = `<i class="fas fa-sync-alt fa-spin"></i> ${t('updated.toast')}`;
         indicator.style.display = 'flex';
         
         // Hide after 3 seconds
@@ -322,7 +335,7 @@ class TournamentManager {
             
         } catch (error) {
             console.error('Error during manual refresh:', error);
-            this.showError('Fehler beim Aktualisieren der Daten');
+            this.showError(t('error.refreshData'));
         }
     }
 
@@ -672,7 +685,7 @@ function displayCourts(container) {
     container.innerHTML = '';
     
     if (!tournament.matches || tournament.matches.length === 0) {
-        container.innerHTML = '<div class="no-matches-court">Keine Spiele verfügbar</div>';
+        container.innerHTML = `<div class="no-matches-court">${t('court.noMatches')}</div>`;
         return;
     }
     
@@ -687,7 +700,7 @@ function displayCourts(container) {
     
     
     if (courts.length === 0) {
-        container.innerHTML = '<div class="no-matches-court">Keine Courts verfügbar</div>';
+        container.innerHTML = `<div class="no-matches-court">${t('court.noCourts')}</div>`;
         return;
     }
     
@@ -740,7 +753,7 @@ function displayCourts(container) {
             <div class="court-matches">
                 ${currentMatch ? createMatchSlot(currentMatch, 'current') : ''}
                 ${nextMatch ? createMatchSlot(nextMatch, 'next') : ''}
-                ${!currentMatch && !nextMatch ? '<div class="no-matches-court">Keine Spiele geplant</div>' : ''}
+                ${!currentMatch && !nextMatch ? `<div class="no-matches-court">${t('court.noMatchesScheduled')}</div>` : ''}
             </div>
         `;
         
@@ -759,7 +772,7 @@ function displayCourts(container) {
      return `
          <div class="match-slot ${type}">
              <div class="match-status-badge ${type}">
-                 ${type === 'current' ? 'Aktuell' : 'Nächste'}
+                 ${type === 'current' ? t('slot.current') : t('slot.next')}
              </div>
              <div class="match-teams-compact">
                  <div class="team-row-compact">
@@ -773,7 +786,7 @@ function displayCourts(container) {
              </div>
              <div class="match-info-compact">
                  <span class="match-time-compact">${escapeHtml(match.time || 'TBD')}</span>
-                 <span class="match-number-compact">Match ${escapeHtml(match.matchNumber || 'TBD')}</span>
+                 <span class="match-number-compact">${escapeHtml(t('match.label', { n: match.matchNumber || 'TBD' }))}</span>
                  <span class="match-sex-compact">${escapeHtml(matchSex)}</span>
              </div>
          </div>
@@ -934,30 +947,30 @@ function displayMatches(matches, container) {
     container.innerHTML = '';
     
     if (!matches || matches.length === 0) {
-        container.innerHTML = '<p>Keine Spiele verfügbar.</p>';
+        container.innerHTML = `<p>${t('list.empty')}</p>`;
         return;
     }
-    
+
     matches.forEach(match => {
         const matchCard = document.createElement('div');
         matchCard.className = 'match-card';
-        
+
          const team1Name = match.team1?.teamName || 'TBD';
          const team2Name = match.team2?.teamName || 'TBD';
-        
+
         // Use status from Excel status column
         let statusClass = 'upcoming';
-        let statusText = 'Upcoming';
-        
+        let statusText = t('status.upcoming');
+
         if (match.status === 'concluded') {
             statusClass = 'completed';
-            statusText = 'Completed';
+            statusText = t('status.completed');
         } else if (match.status === 'open') {
             statusClass = 'in-progress';
-            statusText = 'In Progress';
+            statusText = t('status.inProgress');
         } else if (match.status === 'upcoming') {
             statusClass = 'upcoming';
-            statusText = 'Upcoming';
+            statusText = t('status.upcoming');
         }
         
         matchCard.innerHTML = `
@@ -986,11 +999,11 @@ function displayMatches(matches, container) {
                     <div class="match-details">
                         <div class="match-number">
                             <i class="fas fa-hashtag"></i>
-                            <span>Match ${escapeHtml(match.matchNumber || 'TBD')}</span>
+                            <span>${escapeHtml(t('match.label', { n: match.matchNumber || 'TBD' }))}</span>
                         </div>
                         <div class="match-round">
                             <i class="fas fa-trophy"></i>
-                            <span>Runde ${escapeHtml(match.round || 'TBD')}</span>
+                            <span>${escapeHtml(t('match.round', { n: match.round || 'TBD' }))}</span>
                         </div>
                         <div class="match-sex">
                             <i class="fas fa-mars"></i>
@@ -1067,7 +1080,7 @@ function generateTournamentBracket(container) {
     const allMatches = tournament.matches || [];
     
     if (allMatches.length === 0) {
-        container.innerHTML = '<div class="no-bracket">Keine Turnierdaten verfügbar</div>';
+        container.innerHTML = `<div class="no-bracket">${t('bracket.empty')}</div>`;
         return;
     }
     
@@ -1087,17 +1100,17 @@ function generateTournamentBracket(container) {
     // Create complete bracket structure with all expected matches
     // Round I (matches 1-8)
     const round1Matches = createMatchesForRange(1, 8, sortedMatches);
-    const round1 = createRound('Round I', round1Matches);
+    const round1 = createRound(t('bracket.roundI'), round1Matches);
     bracket.appendChild(round1);
-    
+
     // Winner R1 / Round II (matches 13-16)
     const winnerR1Matches = createMatchesForRange(13, 16, sortedMatches);
-    const winnerR1 = createRound('Winner R1', winnerR1Matches);
+    const winnerR1 = createRound(t('bracket.winnerR1'), winnerR1Matches);
     bracket.appendChild(winnerR1);
-    
+
     // Winner R2 (matches 21-22)
     const winnerR2Matches = createMatchesForRange(21, 22, sortedMatches);
-    const winnerR2 = createRound('Winner R2', winnerR2Matches);
+    const winnerR2 = createRound(t('bracket.winnerR2'), winnerR2Matches);
     bracket.appendChild(winnerR2);
     
     // Semifinals with nested Finals
@@ -1106,17 +1119,17 @@ function generateTournamentBracket(container) {
     
     // Semifinal 1 (match 27)
     const sf1Matches = createMatchesForRange(27, 27, sortedMatches);
-    const sf1 = createRound('Semifinals', sf1Matches);
+    const sf1 = createRound(t('bracket.semifinals'), sf1Matches);
     semifinalsContainer.appendChild(sf1);
-    
+
     // Finals (matches 29-30) - nested inside semifinals
     const finalMatches = createMatchesForRange(29, 30, sortedMatches);
-    const finals = createRound('Finals', finalMatches, true);
+    const finals = createRound(t('bracket.finals'), finalMatches, true);
     semifinalsContainer.appendChild(finals);
-    
+
     // Semifinal 2 (match 28)
     const sf2Matches = createMatchesForRange(28, 28, sortedMatches);
-    const sf2 = createRound('Semifinals', sf2Matches);
+    const sf2 = createRound(t('bracket.semifinals'), sf2Matches);
     semifinalsContainer.appendChild(sf2);
     
     bracket.appendChild(semifinalsContainer);
@@ -1127,22 +1140,22 @@ function generateTournamentBracket(container) {
     
     // Loser R4 (matches 25-26) - rightmost
     const lr4Matches = createMatchesForRange(25, 26, sortedMatches);
-    const lr4 = createRound('Loser R4', lr4Matches);
+    const lr4 = createRound(t('bracket.loserR4'), lr4Matches);
     losersContainer.appendChild(lr4);
-    
+
     // Loser R3 (matches 23-24) - second rightmost
     const lr3Matches = createMatchesForRange(23, 24, sortedMatches);
-    const lr3 = createRound('Loser R3', lr3Matches);
+    const lr3 = createRound(t('bracket.loserR3'), lr3Matches);
     losersContainer.appendChild(lr3);
-    
+
     // Loser R2 (matches 17-20) - third rightmost
     const lr2Matches = createMatchesForRange(17, 20, sortedMatches);
-    const lr2 = createRound('Loser R2', lr2Matches);
+    const lr2 = createRound(t('bracket.loserR2'), lr2Matches);
     losersContainer.appendChild(lr2);
-    
+
     // Loser R1 (matches 9-12) - fourth rightmost
     const lr1Matches = createMatchesForRange(9, 12, sortedMatches);
-    const lr1 = createRound('Loser R1', lr1Matches);
+    const lr1 = createRound(t('bracket.loserR1'), lr1Matches);
     losersContainer.appendChild(lr1);
     
     bracket.appendChild(losersContainer);
@@ -1259,11 +1272,11 @@ function createMatch(match, isFinals = false) {
     
     // Label final matches
     if (match.matchNumber === 29) {
-        matchNumber.textContent = `Match ${match.matchNumber} (3rd/4th)`;
+        matchNumber.textContent = t('bracket.matchThird', { n: match.matchNumber });
     } else if (match.matchNumber === 30) {
-        matchNumber.textContent = `Match ${match.matchNumber} (1st/2nd)`;
+        matchNumber.textContent = t('bracket.matchFinal', { n: match.matchNumber });
     } else {
-        matchNumber.textContent = `Match ${match.matchNumber}`;
+        matchNumber.textContent = t('bracket.match', { n: match.matchNumber });
     }
     
     matchDiv.appendChild(matchNumber);
@@ -1456,17 +1469,17 @@ function createBracketMatch(match, isFinals = false) {
     
     // Determine match status
     let statusClass = 'upcoming';
-    let statusText = 'Upcoming';
-    
+    let statusText = t('status.upcoming');
+
     if (match.result) {
         statusClass = 'completed';
-        statusText = 'Completed';
+        statusText = t('status.completed');
     } else {
         const now = new Date();
         const matchTime = match.time && match.time !== 'TBD' ? new Date(`2025-09-20T${match.time}`) : null;
         if (matchTime && matchTime < now) {
             statusClass = 'in-progress';
-            statusText = 'In Progress';
+            statusText = t('status.inProgress');
         }
     }
     
@@ -1528,7 +1541,7 @@ async function loadStandings() {
         const ranglisteSheet = workbook.Sheets['Rangliste'];
         if (!ranglisteSheet) {
             console.warn('Rangliste sheet not found');
-            standingsContainer.innerHTML = '<p>Rangliste-Daten nicht verfügbar</p>';
+            standingsContainer.innerHTML = `<p>${t('standings.unavailable')}</p>`;
             return;
         }
 
@@ -1542,7 +1555,7 @@ async function loadStandings() {
         console.error('Error loading standings:', error);
         const standingsContainer = document.getElementById('standingsTable');
         if (standingsContainer) {
-            standingsContainer.innerHTML = '<p>Fehler beim Laden der Rangliste</p>';
+            standingsContainer.innerHTML = `<p>${t('standings.loadError')}</p>`;
         }
     }
 }
@@ -1550,7 +1563,7 @@ async function loadStandings() {
 // Generate standings table
 function generateStandingsTable(data, container) {
     if (!data || data.length < 2) {
-        container.innerHTML = '<p>Keine Rangliste-Daten verfügbar</p>';
+        container.innerHTML = `<p>${t('standings.empty')}</p>`;
         return;
     }
 
@@ -1605,30 +1618,30 @@ function setupRefreshButtons() {
         button.addEventListener('click', async () => {
             // Add loading state to button
             const originalContent = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+            button.innerHTML = `<i class="fas fa-sync-alt fa-spin"></i> ${t('refresh.loading')}`;
             button.disabled = true;
-            
+
             try {
                 // Call manual refresh
                 await tournament.manualRefresh();
-                
+
                 // Show success feedback
-                button.innerHTML = '<i class="fas fa-check"></i> Refreshed!';
-                button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
-                
+                button.innerHTML = `<i class="fas fa-check"></i> ${t('refresh.done')}`;
+                button.style.background = 'var(--success)';
+
                 // Reset button after 2 seconds
                 setTimeout(() => {
                     button.innerHTML = originalContent;
                     button.disabled = false;
                     button.style.background = '';
                 }, 2000);
-                
+
             } catch (error) {
                 console.error('Refresh failed:', error);
-                
+
                 // Show error feedback
-                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
-                button.style.background = 'linear-gradient(135deg, #dc3545, #c82333)';
+                button.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('refresh.error')}`;
+                button.style.background = 'var(--danger)';
                 
                 // Reset button after 3 seconds
                 setTimeout(() => {
@@ -1644,4 +1657,15 @@ function setupRefreshButtons() {
 // Initialize refresh buttons when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     setupRefreshButtons();
+});
+
+// When the language changes, re-localize the dynamic content: refresh the
+// tournament dropdown labels, the "last updated" line, and re-render the
+// JS-built views by reusing the existing data-update event.
+document.addEventListener('appLanguageChanged', function() {
+    if (typeof populateTournamentFilter === 'function') populateTournamentFilter();
+    if (tournament && typeof tournament.updateLastUpdatedTime === 'function') {
+        tournament.updateLastUpdatedTime();
+    }
+    document.dispatchEvent(new CustomEvent('tournamentDataUpdated'));
 });

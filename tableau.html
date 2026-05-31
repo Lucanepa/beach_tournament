@@ -6,49 +6,61 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Tableau - Beach Volleyball Turnier</title>
+    <title data-i18n="page.tableauTitle">Tableau - Beach Volleyball Turnier</title>
     <link rel="icon" type="image/png" href="ZuZU.png">
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <header class="site-header">
+        <div class="container">
+            <a href="index.html" class="site-brand">
+                <img src="ZuZU.png" alt="ZuZu Beach" class="site-brand-logo">
+                <span class="site-brand-text" data-i18n="brand.tagline">Turnier</span>
+            </a>
+            <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
+                <button type="button" data-lang="de">DE</button>
+                <button type="button" data-lang="en">EN</button>
+            </div>
+        </div>
+    </header>
     <div class="container">
 
         <main class="main-content">
             <a href="index.html" class="back-button">
                 <i class="fas fa-arrow-left"></i>
-                Zurück zur Startseite
+                <span data-i18n="nav.back">Zurück zur Startseite</span>
             </a>
 
             <div class="page-header">
                 <h2 class="page-title">
                     <i class="fas fa-table"></i>
-                    Tableau & Rangliste
+                    <span data-i18n="heading.tableau">Tableau & Rangliste</span>
                 </h2>
                 <button id="refreshButton" class="refresh-button">
                     <i class="fas fa-sync-alt"></i>
-                    Refresh
+                    <span data-i18n="nav.refresh">Refresh</span>
                 </button>
             </div>
 
             <div class="loading-section" id="loading">
                 <div class="loading"></div>
-                <p>Lade Tableau-Daten...</p>
+                <p data-i18n="loading.tableau">Lade Tableau-Daten...</p>
             </div>
 
             <div class="tableau-section" id="tableauSection" style="display: none;">
                 <div class="tournament-filter">
-                    <label for="tournamentFilter">Turnier:</label>
+                    <label for="tournamentFilter" data-i18n="filter.tournament">Turnier:</label>
                     <select id="tournamentFilter" class="filter-select">
                         <option value="men">U20 Herren (U20M)</option>
                         <option value="women">U20 Damen (U20F)</option>
                     </select>
                 </div>
-                
+
                 <div class="tab-navigation">
-                    <button class="tab-button active" data-tab="bracket">Turnierbaum</button>
-                    <button class="tab-button" data-tab="standings">Rangliste</button>
+                    <button class="tab-button active" data-tab="bracket" data-i18n="tabs.bracket">Turnierbaum</button>
+                    <button class="tab-button" data-tab="standings" data-i18n="tabs.standings">Rangliste</button>
                 </div>
 
                 <!-- Tournament Bracket Tab -->
@@ -70,12 +82,13 @@
 
             <div class="no-data" id="noData" style="display: none;">
                 <i class="fas fa-exclamation-triangle"></i>
-                <h3>Keine Daten verfügbar</h3>
-                <p>Es konnten keine Tableau-Daten geladen werden.</p>
+                <h3 data-i18n="empty.noDataTitle">Keine Daten verfügbar</h3>
+                <p data-i18n="empty.noDataBody">Es konnten keine Tableau-Daten geladen werden.</p>
             </div>
         </main>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="script.js"></script>
     <script>
         // Load tableau when page loads
