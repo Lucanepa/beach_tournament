@@ -4,7 +4,8 @@ import { toast } from 'sonner'
 import { Lock, Volleyball, SlidersHorizontal } from 'lucide-react'
 import { adminLogin, setToken, clearToken, tokenValid, updateScore } from '@/lib/api'
 import { useTournaments } from '@/lib/useTournament'
-import { availableTournaments, tournamentLabel, DATA_SOURCES, type Match } from '@/lib/tournament'
+import { useSelectedTournament } from '@/lib/useSelectedTournament'
+import { tournamentLabel, DATA_SOURCES, type Match } from '@/lib/tournament'
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from '@/lib/settings'
 import { setLang } from '@/lib/i18n'
 import { TournamentSwitcher } from '@/components/TournamentSwitcher'
@@ -178,8 +179,7 @@ function ScoreRow({
 
 function ScoreEditor({ onExpired }: { onExpired: () => void }) {
   const { t } = useTranslation()
-  const avail = availableTournaments()
-  const [sel, setSel] = useState(avail[0] || 'men')
+  const [sel, setSel] = useSelectedTournament()
   const { data, isLoading } = useTournaments()
   const matches = [...(data?.[sel]?.matches || [])].sort((a, b) => a.matchNumber - b.matchNumber)
 

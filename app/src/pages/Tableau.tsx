@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { toPng } from 'html-to-image'
 import { ZoomIn, ZoomOut, RotateCcw, Download } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
-import { availableTournaments, tournamentLabel, type Match } from '@/lib/tournament'
+import { useSelectedTournament } from '@/lib/useSelectedTournament'
+import { tournamentLabel, type Match } from '@/lib/tournament'
 import { TournamentSwitcher } from '@/components/TournamentSwitcher'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -187,8 +188,7 @@ function Standings({ rows }: { rows: (string | number)[][] }) {
 
 export default function Tableau() {
   const { t, i18n } = useTranslation()
-  const avail = availableTournaments()
-  const [sel, setSel] = useState(avail[0] || 'men')
+  const [sel, setSel] = useSelectedTournament()
   const { data, isLoading } = useTournaments()
   const td = data?.[sel]
   const lang = i18n.language?.startsWith('en') ? 'en' : 'de'

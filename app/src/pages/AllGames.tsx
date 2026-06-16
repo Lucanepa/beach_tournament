@@ -1,9 +1,9 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
 import { MapPin, Clock, Hash, Trophy, CalendarX } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
-import { availableTournaments, scheduleCompare, type Match } from '@/lib/tournament'
+import { useSelectedTournament } from '@/lib/useSelectedTournament'
+import { scheduleCompare, type Match } from '@/lib/tournament'
 import { TournamentSwitcher } from '@/components/TournamentSwitcher'
 import { Badge } from '@/components/ui/badge'
 
@@ -64,8 +64,7 @@ function MatchCard({ match, index }: { match: Match; index: number }) {
 
 export default function AllGames() {
   const { t } = useTranslation()
-  const avail = availableTournaments()
-  const [sel, setSel] = useState(avail[0] || 'men')
+  const [sel, setSel] = useSelectedTournament()
   const { data, isLoading } = useTournaments()
 
   const matches = (data?.[sel]?.matches || [])

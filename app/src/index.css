@@ -90,6 +90,16 @@
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+  /* No spinner arrows on number inputs (score / court entry) — cleaner, centered. */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 /* ── Aceternity/Magic-UI style effects (hand-built, no 3D libs) ─── */
