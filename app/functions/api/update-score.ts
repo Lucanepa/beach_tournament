@@ -3,41 +3,57 @@
 // Google Apps Script web app. Env: ADMIN_PIN, APPSCRIPT_URL, APPSCRIPT_SECRET
 
 export const onRequestPost = async (context: any) => {
-  const { ADMIN_PIN: pin, APPSCRIPT_URL: url, APPSCRIPT_SECRET: secret } = context.env
-  if (!pin || !url || !secret) return json(500, { ok: false, error: 'not_configured' })
-
-  let body: any
   try {
-    body = await context.request.json()
-  } catch {
-    return json(400, { ok: false, error: 'bad_json' })
+    const { ADMIN_PIN: pin, APPSCRIPT_URL: url, APPSCRIPT_SECRET: secret } = context.env
+    if (!pin || !url || !secret) return json(500, { ok: false, error: 'not_configured' })
+
+    let body: any
+    try {
+      body = await context.request.json()
+    } catch {
+      return json(400, { ok: false, error: 'bad_json' })
+    }
+
+    if (!(await verifyToken(body?.token, pin))) return json(401, { ok: false, error: 'unauthorized' })
+
+    const tournament = body.tournament
+    if (tournament !== 'men' && tournament !== 'women') return json(400, { ok: false, error: 'bad_tournament' })
+
+    const matchNumber = parseInt(body.matchNumber, 10)
+    if (!Number.isInteger(matchNumber) || matchNumber < 1 || matchNumber > 99)
+      return json(400, { ok: false, error: 'bad_match' })
+
+    const forward: any = { secret, tournament, matchNumber, sets: sanitizeSets(body.sets) }
+    if (Object.prototype.hasOwnProperty.call(body, 'court')) forward.court = clampCourt(body.court)
+
+    let data: any
+    try {
+      data = await callAppsScript(url, forward)
+    } catch (e: any) {
+      return json(502, { ok: false, error: 'sheet_unreachable', detail: String(e && (e.message || e)).slice(0, 160) })
+    }
+    if (!data || !data.ok) return json(502, { ok: false, error: (data && data.error) || 'write_failed' })
+    return json(200, { ok: true, matchNumber, sets: forward.sets, court: forward.court })
+  } catch (err: any) {
+    return json(500, { ok: false, error: 'exception', detail: String((err && (err.stack || err.message)) || err).slice(0, 300) })
   }
+}
 
-  if (!(await verifyToken(body?.token, pin))) return json(401, { ok: false, error: 'unauthorized' })
-
-  const tournament = body.tournament
-  if (tournament !== 'men' && tournament !== 'women') return json(400, { ok: false, error: 'bad_tournament' })
-
-  const matchNumber = parseInt(body.matchNumber, 10)
-  if (!Number.isInteger(matchNumber) || matchNumber < 1 || matchNumber > 99)
-    return json(400, { ok: false, error: 'bad_match' })
-
-  const forward: any = { secret, tournament, matchNumber, sets: sanitizeSets(body.sets) }
-  if (Object.prototype.hasOwnProperty.call(body, 'court')) forward.court = clampCourt(body.court)
-
-  let data: any
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(forward),
-    })
-    data = await res.json()
-  } catch {
-    return json(502, { ok: false, error: 'sheet_unreachable' })
+// Apps Script answers a POST to /exec with a 302 → script.googleusercontent.com.
+// The Workers runtime needs that redirect followed explicitly (GET) to read the
+// JSON result, otherwise the auto-follow can stall and yield a 502.
+async function callAppsScript(url: string, forward: any): Promise<any> {
+  let res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(forward),
+    redirect: 'manual',
+  })
+  if (res.status >= 300 && res.status < 400) {
+    const loc = res.headers.get('location')
+    if (loc) res = await fetch(loc, { method: 'GET' })
   }
-  if (!data || !data.ok) return json(502, { ok: false, error: (data && data.error) || 'write_failed' })
-  return json(200, { ok: true, matchNumber, sets: forward.sets, court: forward.court })
+  return res.json()
 }
 
 function sanitizeSets(raw: any): ([number, number] | null)[] {
