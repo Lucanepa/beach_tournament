@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Lock, Volleyball, SlidersHorizontal } from 'lucide-react'
 import { adminLogin, setToken, clearToken, tokenValid, updateScore } from '@/lib/api'
 import { useTournaments } from '@/lib/useTournament'
-import { availableTournaments, type Match } from '@/lib/tournament'
+import { availableTournaments, tournamentLabel, DATA_SOURCES, type Match } from '@/lib/tournament'
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from '@/lib/settings'
 import { setLang } from '@/lib/i18n'
 import { TournamentSwitcher } from '@/components/TournamentSwitcher'
@@ -208,7 +208,8 @@ function ScoreEditor({ onExpired }: { onExpired: () => void }) {
 }
 
 function SettingsPanel() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = i18n.language?.startsWith('en') ? 'en' : 'de'
   const s = getSettings()
   const [courtCount, setCourtCount] = useState(String(s.courtCount))
   const [refreshSeconds, setRefreshSeconds] = useState(String(s.refreshSeconds))
@@ -231,13 +232,13 @@ function SettingsPanel() {
   }
 
   return (
-    <section className="max-w-lg">
+    <section className="max-w-4xl">
       <div className="mb-4 border-b-2 border-border pb-2">
         <h2 className="flex items-center gap-2 text-xl font-bold uppercase tracking-tight text-navy">
           <SlidersHorizontal className="size-5 text-coral" /> {t('settings.heading')}
         </h2>
       </div>
-      <div className="space-y-5">
+      <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
         <div>
           <Label htmlFor="cc">{t('settings.courtCount')}</Label>
           <Input id="cc" type="number" min={0} max={50} value={courtCount} onChange={(e) => setCourtCount(e.target.value)} className="mt-1 max-w-[220px]" />
@@ -250,10 +251,10 @@ function SettingsPanel() {
         <div>
           <span className="text-sm font-semibold text-foreground">{t('settings.tournaments')}</span>
           <div className="mt-2 space-y-1.5">
-            {(['men', 'women'] as const).map((k) => (
+            {Object.keys(DATA_SOURCES).map((k) => (
               <label key={k} className="flex items-center gap-2">
                 <input type="checkbox" checked={tournaments.includes(k)} onChange={() => toggle(k)} className="size-4 accent-coral" />
-                <span>{t(k === 'men' ? 'settings.men' : 'settings.women')}</span>
+                <span>{tournamentLabel(k, lang)}</span>
               </label>
             ))}
           </div>
@@ -269,8 +270,10 @@ function SettingsPanel() {
             ))}
           </div>
         </div>
-        <Button onClick={save}>{t('settings.save')}</Button>
       </div>
+      <Button onClick={save} className="mt-6">
+        {t('settings.save')}
+      </Button>
     </section>
   )
 }
