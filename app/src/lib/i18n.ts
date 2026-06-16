@@ -125,7 +125,7 @@ const en: typeof de = {
   'admin.unlock': 'Unlock',
   'admin.wrongPin': 'Wrong PIN',
   'admin.lock': 'Lock',
-  'admin.notConfigured': 'ADMIN_PIN is not set in Netlify (Site settings → Environment variables).',
+  'admin.notConfigured': 'ADMIN_PIN is not set (Cloudflare Pages → Settings → Environment variables).',
   'admin.scoresHeading': 'Scores',
   'admin.scoresHint': 'Enter court & set scores — result, bracket & standings update automatically.',
   'admin.courtLabel': 'Court',
