@@ -28,7 +28,7 @@ const de = {
   'admin.unlock': 'Entsperren',
   'admin.wrongPin': 'Falscher PIN',
   'admin.lock': 'Sperren',
-  'admin.notConfigured': 'ADMIN_PIN ist in Netlify nicht gesetzt (Site settings → Environment variables).',
+  'admin.notConfigured': 'ADMIN_PIN ist nicht gesetzt (Cloudflare Pages → Settings → Environment variables).',
   'admin.scoresHeading': 'Spielstände',
   'admin.scoresHint': 'Court & Setzergebnisse eingeben – Resultat, Tableau & Rangliste aktualisieren sich automatisch.',
   'admin.courtLabel': 'Court',
@@ -87,6 +87,8 @@ const de = {
   'bracket.match': 'Spiel {n}',
   'bracket.matchThird': 'Spiel {n} (3./4.)',
   'bracket.matchFinal': 'Spiel {n} (1./2.)',
+  'bracket.saveImage': 'Als Bild speichern',
+  'bracket.reset': 'Zurücksetzen',
 
   'standings.unavailable': 'Rangliste-Daten nicht verfügbar',
   'standings.loadError': 'Fehler beim Laden der Rangliste',
@@ -182,6 +184,8 @@ const en: typeof de = {
   'bracket.match': 'Match {n}',
   'bracket.matchThird': 'Match {n} (3rd/4th)',
   'bracket.matchFinal': 'Match {n} (1st/2nd)',
+  'bracket.saveImage': 'Save as image',
+  'bracket.reset': 'Reset',
 
   'standings.unavailable': 'Standings data unavailable',
   'standings.loadError': 'Error loading standings',
