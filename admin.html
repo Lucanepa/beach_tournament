@@ -34,7 +34,7 @@
             <div class="page-header">
                 <h2 class="page-title">
                     <i class="fas fa-gear"></i>
-                    <span data-i18n="settings.heading">Einstellungen</span>
+                    <span data-i18n="admin.heading">Admin</span>
                 </h2>
                 <button type="button" id="lockBtn" class="btn btn-secondary admin-hidden" data-i18n="admin.lock">Sperren</button>
             </div>
@@ -48,8 +48,25 @@
                 <button type="submit" class="btn btn-primary" data-i18n="admin.unlock">Entsperren</button>
             </form>
 
-            <!-- Settings (revealed after unlock) -->
+            <!-- Score editor (revealed after unlock) -->
+            <section id="scoresPanel" class="scores-panel admin-hidden">
+                <div class="section-heading">
+                    <h3><i class="fas fa-volleyball-ball"></i> <span data-i18n="admin.scoresHeading">Spielstände</span></h3>
+                    <p class="form-hint" data-i18n="admin.scoresHint">Setzergebnisse eingeben – Tableau & Rangliste aktualisieren sich automatisch.</p>
+                </div>
+                <div id="scoresTournamentWrap" class="tournament-filter">
+                    <label for="scoresTournament" data-i18n="filter.tournament">Turnier:</label>
+                    <select id="scoresTournament" class="filter-select"></select>
+                </div>
+                <p id="scoresStatus" class="scores-status" role="status"></p>
+                <div id="scoresList" class="scores-list"></div>
+            </section>
+
+            <!-- Display settings (revealed after unlock) -->
             <form id="settingsForm" class="settings-form admin-hidden">
+                <div class="section-heading">
+                    <h3><i class="fas fa-sliders"></i> <span data-i18n="settings.heading">Einstellungen</span></h3>
+                </div>
                 <div class="form-group">
                     <label for="courtCount" data-i18n="settings.courtCount">Anzahl Courts</label>
                     <input type="number" id="courtCount" class="form-input" min="0" max="50" step="1">
@@ -83,30 +100,48 @@
 
     <script src="settings.js"></script>
     <script src="i18n.js"></script>
+    <script src="script.js"></script>
+    <script src="admin-scores.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const lockForm = document.getElementById('lockForm');
             const settingsForm = document.getElementById('settingsForm');
+            const scoresPanel = document.getElementById('scoresPanel');
             const lockBtn = document.getElementById('lockBtn');
             const pinInput = document.getElementById('pinInput');
             const pinError = document.getElementById('pinError');
 
+            const TOKEN_KEY = 'zuzu-admin-token';
+            function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+            function tokenValid() {
+                const tok = getToken();
+                if (!tok || tok.indexOf('.') < 0) return false;
+                try {
+                    const payload = JSON.parse(atob(tok.split('.')[0]));
+                    return payload && typeof payload.exp === 'number' && Date.now() <= payload.exp;
+                } catch (e) { return false; }
+            }
+
             function showPanel() {
                 lockForm.classList.add('admin-hidden');
                 settingsForm.classList.remove('admin-hidden');
+                scoresPanel.classList.remove('admin-hidden');
                 lockBtn.classList.remove('admin-hidden');
                 populate();
+                document.dispatchEvent(new CustomEvent('admin:unlocked', { detail: { token: getToken() } }));
             }
             function showLock() {
                 settingsForm.classList.add('admin-hidden');
+                scoresPanel.classList.add('admin-hidden');
                 lockBtn.classList.add('admin-hidden');
                 lockForm.classList.remove('admin-hidden');
                 pinInput.value = '';
                 pinInput.focus();
+                document.dispatchEvent(new CustomEvent('admin:locked'));
             }
 
-            // Remember unlock on this device so the organizer isn't re-prompted.
-            if (localStorage.getItem('zuzu-admin-ok') === '1') showPanel();
+            // Remember a valid session on this device so the organizer isn't re-prompted.
+            if (tokenValid()) showPanel();
 
             lockForm.addEventListener('submit', async function (e) {
                 e.preventDefault();
@@ -118,13 +153,13 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ pin }),
                     });
-                    if (res.ok) {
-                        localStorage.setItem('zuzu-admin-ok', '1');
+                    const data = await res.json().catch(() => ({}));
+                    if (res.ok && data.token) {
+                        try { localStorage.setItem(TOKEN_KEY, data.token); } catch (e2) { /* ignore */ }
                         showPanel();
                     } else {
-                        const data = await res.json().catch(() => ({}));
                         pinError.textContent = data.error === 'not_configured'
-                            ? 'ADMIN_PIN is not set in Netlify (Site settings → Environment variables).'
+                            ? t('admin.notConfigured')
                             : t('admin.wrongPin');
                         pinError.classList.remove('admin-hidden');
                     }
@@ -135,9 +170,12 @@
             });
 
             lockBtn.addEventListener('click', function () {
-                localStorage.removeItem('zuzu-admin-ok');
+                try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignore */ }
                 showLock();
             });
+
+            // If a score write reports the session has expired, force re-login.
+            document.addEventListener('admin:sessionExpired', showLock);
 
             // ---- Settings form ----
             const courtCount = document.getElementById('courtCount');

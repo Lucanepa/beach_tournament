@@ -35,19 +35,32 @@ function tournamentLabel(key) {
     return raw || key;
 }
 
+// Tournaments to offer: those enabled in the organizer settings, intersected
+// with the configured DATA_SOURCES (falling back to all if none match).
+function availableTournaments() {
+    const keys = Object.keys(DATA_SOURCES);
+    const selected = (typeof getSettings === 'function') ? getSettings().tournaments : keys;
+    const avail = keys.filter(k => Array.isArray(selected) && selected.includes(k));
+    return avail.length ? avail : keys;
+}
+
 // Populate a tournament <select> from DATA_SOURCES so labels live in one place.
+// The whole filter is hidden when only one tournament is available, so the
+// toggle only appears when there is more than one gender/tournament to switch
+// between.
 function populateTournamentFilter() {
     const select = document.getElementById('tournamentFilter');
     if (!select) return;
-    const current = select.value || 'men';
-    select.innerHTML = Object.keys(DATA_SOURCES).map(key => {
+    const avail = availableTournaments();
+    const current = select.value || tournament.currentTournament || avail[0];
+    select.innerHTML = avail.map(key => {
         const label = tournamentLabel(key);
         return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
     }).join('');
-    // Preserve the previously selected tournament if it still exists
-    if ([...select.options].some(o => o.value === current)) {
-        select.value = current;
-    }
+    select.value = avail.includes(current) ? current : avail[0];
+
+    const wrap = select.closest('.tournament-filter');
+    if (wrap) wrap.style.display = avail.length > 1 ? '' : 'none';
 }
 
 // Build the URL to fetch a tournament's workbook, with optional cache-busting.
@@ -77,6 +90,12 @@ class TournamentManager {
     async init() {
         try {
             await this.loadExcelData();
+            // Seed the change signature so the first edit after load is detected
+            // on the next cycle (rather than being silently absorbed).
+            this.dataSignature = JSON.stringify({
+                men: this.menData.matches,
+                women: this.womenData.matches
+            });
             this.updateLastUpdatedTime();
             this.startAutoRefresh();
         } catch (error) {
@@ -150,6 +169,13 @@ class TournamentManager {
 
     // Update the last updated timestamp
     updateLastUpdatedTime() {
+        // Only show the floating timestamp on pages that render live data
+        // (not on the admin page, which also loads script.js).
+        const hasDataView = document.getElementById('courtsGrid')
+            || document.getElementById('matchesList')
+            || document.getElementById('bracketContainer');
+        if (!hasDataView) return;
+
         const now = new Date();
         const timeString = now.toLocaleString('de-CH', {
             year: 'numeric',
@@ -227,28 +253,32 @@ class TournamentManager {
 
     // Load data directly from Excel file
     async loadExcelData(forceRefresh = false) {
-        try {
-            
-            // Load SheetJS library if not already loaded
-            if (typeof XLSX === 'undefined') {
+        this.fetchError = false;
+
+        // Load SheetJS if not already present. If even this fails there is
+        // nothing we can do — surface an honest error rather than fake data.
+        if (typeof XLSX === 'undefined') {
+            try {
                 await this.loadSheetJS();
+            } catch (error) {
+                console.error('Could not load the spreadsheet library:', error);
+                this.showError(t('error.loadData'));
+                return;
             }
-            
-            // Load men's tournament data with cache busting
-            await this.loadTournamentData('men', 'b2m.xlsx', forceRefresh);
-            
-            // Load women's tournament data with cache busting
-            await this.loadTournamentData('women', 'b3f.xlsx', forceRefresh);
-            
-            // Set current data based on current tournament
-            this.setCurrentTournament(this.currentTournament);
-            
-        } catch (error) {
-            console.error('Error loading Excel file:', error);
-            // Use fallback data
-            this.teams = this.getFallbackTeams();
-            this.matches = this.getFallbackMatches();
-            this.courts = ['Court 1', 'Court 2'];
+        }
+
+        // Load both tournaments. Each call keeps the last-good data on failure
+        // and flags this.fetchError so we can show a banner without wiping the
+        // board (important during a live event on flaky wifi).
+        await this.loadTournamentData('men', 'b2m.xlsx', forceRefresh);
+        await this.loadTournamentData('women', 'b3f.xlsx', forceRefresh);
+
+        this.setCurrentTournament(this.currentTournament);
+
+        if (this.fetchError) {
+            this.showError(t('error.loadData'));
+        } else {
+            this.hideError();
         }
     }
     
@@ -262,6 +292,10 @@ class TournamentManager {
             const response = await fetch(url, {
                 cache: forceRefresh ? 'no-store' : 'default'
             });
+            // fetch() doesn't reject on HTTP errors — without this an error page
+            // (e.g. a 403 from an unshared sheet) would be fed to XLSX.read and
+            // silently swallowed. Throw so the catch keeps the last-good data.
+            if (!response.ok) throw new Error('HTTP ' + response.status);
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             
@@ -295,7 +329,10 @@ class TournamentManager {
             }
             
         } catch (error) {
+            // Keep whatever data this tournament already had (last-good) and
+            // flag the failure so loadExcelData can show a banner.
             console.error(`Error loading ${tournament} tournament:`, error);
+            this.fetchError = true;
         }
     }
     
@@ -344,7 +381,9 @@ class TournamentManager {
     async loadSheetJS() {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+            // Vendored locally (same origin) so the board never depends on a
+            // third-party CDN being reachable from the venue's wifi.
+            script.src = 'vendor/xlsx.full.min.js';
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
@@ -428,6 +467,16 @@ class TournamentManager {
             const set3Team1 = cell(row, 'set3Team1');
             const set3Team2 = cell(row, 'set3Team2');
 
+            // Per-set scores as [team1, team2] pairs (number or '' when blank).
+            // Used by the admin score editor to pre-fill inputs; the column map
+            // above is the single source of truth for which cells hold scores.
+            const setVal = v => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? '' : Number(v);
+            const sets = [
+                [setVal(set1Team1), setVal(set1Team2)],
+                [setVal(set2Team1), setVal(set2Team2)],
+                [setVal(set3Team1), setVal(set3Team2)],
+            ];
+
             // Build detailed score string
             let fullScore = '';
             if ((set1Team1 || set1Team2) && (set1Team1 != 0 || set1Team2 != 0)) {
@@ -458,6 +507,8 @@ class TournamentManager {
                      courtFormatted = `Court ${court}`;
                  }
              }
+             // Raw court value (number or '') for the admin court editor.
+             const courtRaw = (court === null || court === undefined || court === '' || court === 0) ? '' : court;
              
              // Format time - handle different Excel time formats
              let timeFormatted = 'TBD';
@@ -505,9 +556,11 @@ class TournamentManager {
             
             matches.push({
                 id: `match_${round}_${matchNumber}`,
+                rowIndex: row, // sheet row, so we can order by sheet order when no time is set
                 round: round || 'TBD',
                 matchNumber: matchNumber || 0,
                 court: courtFormatted,
+                courtRaw: courtRaw,
                 time: timeFormatted,
                 team1: { teamName: team1 || 'Team 1' },
                 team2: { teamName: team2 || 'Team 2' },
@@ -517,6 +570,7 @@ class TournamentManager {
                 // Authoritative sets-won from the result columns (G/H), used by the bracket
                 team1Sets: (result !== undefined && result !== null && result !== '') ? result : null,
                 team2Sets: (resultTeam2 !== undefined && resultTeam2 !== null && resultTeam2 !== '') ? resultTeam2 : null,
+                sets: sets,
                 sex: sex ? sex.toString().toUpperCase() : (tournament === 'men' ? 'M' : 'F')
             });
         }
@@ -539,11 +593,8 @@ class TournamentManager {
         // page's "Aktuell / Nächste" display when the source has no status column.
         Object.keys(courtGroups).forEach(court => {
             const group = courtGroups[court];
-            group.sort((a, b) => {
-                const timeA = a.time || '23:59';
-                const timeB = b.time || '23:59';
-                return timeA.localeCompare(timeB);
-            });
+            // Order by time, falling back to sheet row order when no time is set.
+            group.sort(scheduleCompare);
 
             if (!group.some(m => m.status === 'open')) {
                 const current = group.find(m => m.status !== 'concluded');
@@ -630,10 +681,38 @@ class TournamentManager {
         return this.matches.sort((a, b) => a.time.localeCompare(b.time));
     }
 
-    // Show error message
+    // Show a persistent error banner (so the desk operator sees data problems
+    // instead of a silently frozen/empty board).
     showError(message) {
         console.error(message);
-        // You could implement a toast notification here
+        let banner = document.getElementById('data-error-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'data-error-banner';
+            banner.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 2000;
+                background: #e0392b;
+                color: #fff;
+                text-align: center;
+                padding: 10px 16px;
+                font-weight: 600;
+                font-size: 14px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            `;
+            document.body.appendChild(banner);
+        }
+        banner.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${escapeHtml(message)}`;
+        banner.style.display = 'block';
+    }
+
+    // Hide the error banner once data loads successfully again.
+    hideError() {
+        const banner = document.getElementById('data-error-banner');
+        if (banner) banner.style.display = 'none';
     }
 }
 
@@ -645,6 +724,25 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// Schedule ordering: by start time, then court, then sheet row order. When a
+// match has no Startzeit, its time sorts last (sentinel) so matches on the same
+// court fall back to their order in the sheet — i.e. the "next game" on a court
+// is simply the next row, exactly as the organizer entered them.
+function matchTimeKey(m) {
+    return (m && m.time && m.time !== 'TBD') ? m.time : '99:99';
+}
+function matchCourtNumber(m) {
+    const n = parseInt(String((m && m.court) || '').replace('Court ', ''), 10);
+    return Number.isNaN(n) ? 999 : n;
+}
+function scheduleCompare(a, b) {
+    const t = matchTimeKey(a).localeCompare(matchTimeKey(b));
+    if (t !== 0) return t;
+    const c = matchCourtNumber(a) - matchCourtNumber(b);
+    if (c !== 0) return c;
+    return (a.rowIndex || 0) - (b.rowIndex || 0);
 }
 
 // Initialize tournament manager
@@ -729,7 +827,7 @@ function displayCourts(container) {
             courtCard.classList.add('men-tournament');
         }
 
-        courtMatches.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+        courtMatches.sort(scheduleCompare);
 
         const currentMatch = courtMatches.find(match => match.status === 'open');
         const nextMatch = courtMatches.find(match => match.status === 'upcoming');
@@ -786,7 +884,7 @@ function displayCourts(container) {
                  </div>
              </div>
              <div class="match-info-compact">
-                 <span class="match-time-compact">${escapeHtml(match.time || 'TBD')}</span>
+                 ${match.time && match.time !== 'TBD' ? `<span class="match-time-compact">${escapeHtml(match.time)}</span>` : ''}
                  <span class="match-number-compact">${escapeHtml(t('match.label', { n: match.matchNumber || 'TBD' }))}</span>
                  <span class="match-sex-compact">${escapeHtml(matchSex)}</span>
              </div>
@@ -807,32 +905,25 @@ async function loadAllGames() {
         noMatches.style.display = 'none';
 
         await tournament.init();
-        
-        // Get all matches and filter out those without court or time
-        const allMatches = tournament.getAllMatches().filter(match => {
-            // Filter out matches without court or time
-            return match.court && match.court !== 'TBD' && match.time && match.time !== 'TBD';
-        });
-        
+
+        // If the current tournament isn't in the enabled set, switch to one that is.
+        const availAG = availableTournaments();
+        if (!availAG.includes(tournament.currentTournament)) {
+            tournament.setCurrentTournament(availAG[0]);
+        }
+
+        // Show every match that has a court assigned. Start time is optional —
+        // when it's missing, matches fall back to sheet row order (via
+        // scheduleCompare) instead of being hidden.
+        const allMatches = tournament.getAllMatches()
+            .filter(match => match.court && match.court !== 'TBD')
+            .sort(scheduleCompare);
+
         if (allMatches.length === 0) {
             noMatches.style.display = 'block';
         } else {
-            // Sort matches by time then court
-            const sortedMatches = allMatches.sort((a, b) => {
-                // First sort by time
-                const timeA = a.time || '23:59';
-                const timeB = b.time || '23:59';
-                if (timeA !== timeB) {
-                    return timeA.localeCompare(timeB);
-                }
-                // Then sort by court
-                const courtA = parseInt(a.court) || 999;
-                const courtB = parseInt(b.court) || 999;
-                return courtA - courtB;
-            });
-            
             matchesSection.style.display = 'block';
-            displayMatches(sortedMatches, matchesList);
+            displayMatches(allMatches, matchesList);
         }
         
         // Build the tournament dropdown from config, then wire its change listener
@@ -846,28 +937,16 @@ async function loadAllGames() {
         
         // Listen for data updates
         document.addEventListener('tournamentDataUpdated', () => {
-            const updatedMatches = tournament.getAllMatches();
+            const updatedMatches = tournament.getAllMatches()
+                .filter(m => m.court && m.court !== 'TBD')
+                .sort(scheduleCompare);
             if (updatedMatches.length === 0) {
                 noMatches.style.display = 'block';
                 matchesSection.style.display = 'none';
             } else {
-                // Sort updated matches by time then court
-                const sortedMatches = updatedMatches.sort((a, b) => {
-                    // First sort by time
-                    const timeA = a.time || '23:59';
-                    const timeB = b.time || '23:59';
-                    if (timeA !== timeB) {
-                        return timeA.localeCompare(timeB);
-                    }
-                    // Then sort by court
-                    const courtA = parseInt(a.court) || 999;
-                    const courtB = parseInt(b.court) || 999;
-                    return courtA - courtB;
-                });
-                
                 matchesSection.style.display = 'block';
                 noMatches.style.display = 'none';
-                displayMatches(sortedMatches, matchesList);
+                displayMatches(updatedMatches, matchesList);
             }
         });
         
@@ -992,10 +1071,10 @@ function displayMatches(matches, container) {
                             <i class="fas fa-map-marker-alt"></i>
                             <span>${escapeHtml(match.court || 'TBD')}</span>
                         </div>
-                        <div class="highlight-item time-highlight">
+                        ${match.time && match.time !== 'TBD' ? `<div class="highlight-item time-highlight">
                             <i class="fas fa-clock"></i>
-                            <span>${escapeHtml(match.time || 'TBD')}</span>
-                        </div>
+                            <span>${escapeHtml(match.time)}</span>
+                        </div>` : ''}
                     </div>
                     <div class="match-details">
                         <div class="match-number">
@@ -1036,7 +1115,13 @@ async function loadTableau() {
         noData.style.display = 'none';
 
         await tournament.init();
-        
+
+        // If the current tournament isn't in the enabled set, switch to one that is.
+        const availTab = availableTournaments();
+        if (!availTab.includes(tournament.currentTournament)) {
+            tournament.setCurrentTournament(availTab[0]);
+        }
+
         // Generate tournament bracket
         if (bracketContainer) {
             generateTournamentBracket(bracketContainer);
@@ -1214,7 +1299,7 @@ function addZoomControls(bracket) {
         <button class="zoom-btn" id="zoomOut">-</button>
         <span class="zoom-level" id="zoomLevel">100%</span>
         <button class="zoom-btn" id="zoomIn">+</button>
-        <button class="zoom-btn" id="zoomReset">Reset</button>
+        <button class="zoom-btn" id="zoomReset">${t('bracket.zoomReset')}</button>
     `;
     
     document.body.appendChild(zoomControls);
@@ -1535,6 +1620,7 @@ async function loadStandings() {
 
         // Read the source (local file or Google Sheet) matching the selected tournament
         const response = await fetch(buildDataUrl(tournament.currentTournament, true), { cache: 'no-store' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         

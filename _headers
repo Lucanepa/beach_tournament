@@ -3,3 +3,17 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /*.html
   Cache-Control: no-cache, no-store, must-revalidate
+
+# Always serve the latest app code (so a last-minute fix isn't served stale).
+# The vendored library (vendor/xlsx.full.min.js, ~880KB) is intentionally NOT
+# listed here so it stays cached after the first load.
+/script.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/admin-scores.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/i18n.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/settings.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/styles.css
+  Cache-Control: no-cache, no-store, must-revalidate
