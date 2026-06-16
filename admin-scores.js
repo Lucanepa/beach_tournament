@@ -85,36 +85,34 @@
         const b = escapeHtml(m.team2 && m.team2.teamName ? m.team2.teamName : 'TBD');
         const round = escapeHtml(m.round && m.round !== 'TBD' ? String(m.round) : '');
         const courtRaw = (m.courtRaw !== undefined && m.courtRaw !== null) ? m.courtRaw : '';
-        const courtField = `
-            <div class="score-court">
-                <span class="score-court-label">${escapeHtml(t('admin.courtLabel'))}</span>
-                <input type="number" inputmode="numeric" min="0" max="50" class="set-input score-court-input" value="${escapeHtml(courtRaw)}" aria-label="Court">
-            </div>`;
         const sets = Array.isArray(m.sets) ? m.sets : [['', ''], ['', ''], ['', '']];
-        const setInputs = [0, 1, 2].map(i => {
-            const sa = sets[i] && sets[i][0] !== undefined ? sets[i][0] : '';
-            const sb = sets[i] && sets[i][1] !== undefined ? sets[i][1] : '';
-            return `
-                <div class="score-set">
-                    <span class="score-set-label">${i + 1}</span>
-                    <input type="number" inputmode="numeric" min="0" max="99" class="set-input score-input" data-team="1" data-set="${i}" value="${escapeHtml(sa)}" aria-label="Set ${i + 1} A">
-                    <span class="score-set-sep">:</span>
-                    <input type="number" inputmode="numeric" min="0" max="99" class="set-input score-input" data-team="2" data-set="${i}" value="${escapeHtml(sb)}" aria-label="Set ${i + 1} B">
-                </div>`;
-        }).join('');
-
+        const cell = (team, i) => {
+            const v = (sets[i] && sets[i][team - 1] !== undefined && sets[i][team - 1] !== null) ? sets[i][team - 1] : '';
+            return `<input type="number" inputmode="numeric" min="0" max="99" class="set-input score-input" data-team="${team}" data-set="${i}" value="${escapeHtml(v)}" aria-label="Set ${i + 1}">`;
+        };
         return `
             <div class="score-row" data-match="${escapeHtml(num)}">
                 <div class="score-row-head">
                     <span class="score-row-num">#${escapeHtml(num)}</span>
-                    <span class="score-row-teams"><b>${a}</b> <span class="score-vs">vs</span> <b>${b}</b></span>
                     ${round ? `<span class="score-row-round">${round}</span>` : ''}
+                    <label class="score-court">
+                        <span class="score-court-label">${escapeHtml(t('admin.courtLabel'))}</span>
+                        <input type="number" inputmode="numeric" min="0" max="50" class="set-input score-court-input" value="${escapeHtml(courtRaw)}" aria-label="Court">
+                    </label>
                 </div>
-                <div class="score-row-sets">
-                    ${courtField}
-                    ${setInputs}
-                    <button type="button" class="btn btn-primary score-save">${t('settings.save')}</button>
+                <div class="score-grid">
+                    <span class="sg-h"></span>
+                    <span class="sg-h">1</span>
+                    <span class="sg-h">2</span>
+                    <span class="sg-h">3</span>
+                    <span class="sg-team">${a}</span>
+                    ${cell(1, 0)}${cell(1, 1)}${cell(1, 2)}
+                    <span class="sg-team">${b}</span>
+                    ${cell(2, 0)}${cell(2, 1)}${cell(2, 2)}
+                </div>
+                <div class="score-row-actions">
                     <span class="score-row-status" role="status"></span>
+                    <button type="button" class="btn btn-primary score-save">${t('settings.save')}</button>
                 </div>
             </div>`;
     }
