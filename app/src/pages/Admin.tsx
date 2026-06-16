@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Lock, Volleyball, SlidersHorizontal } from 'lucide-react'
@@ -14,6 +14,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+
+const ROMAN = ['I', 'II', 'III']
+
+// Valid completed beach-volleyball set: winner reaches `target` (21 for sets
+// 1-2, 15 for set 3) with a 2-point lead. Past `target` you only win by exactly
+// 2 (deuce). So 21-13 ✓, 23-21 ✓, 23-13 ✗, 21-20 ✗ (needs 22-20).
+function validSet(a: number, b: number, target: number): boolean {
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a === b) return false
+  const w = Math.max(a, b)
+  const l = Math.min(a, b)
+  if (w < target) return false
+  if (w === target) return l <= target - 2
+  return l >= target - 1 && w === l + 2
+}
 
 function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const { t } = useTranslation()
@@ -77,9 +91,31 @@ function ScoreRow({
   const setCell = (si: number, ti: number, v: string) =>
     setSets((prev) => prev.map((p, i) => (i === si ? (ti === 0 ? [v, p[1]] : [p[0], v]) : p)))
 
+  // Outcome of a set: null (incomplete), 'x' (invalid), or the winning team (1|2).
+  const numOf = (s: string) => (s.trim() === '' ? null : parseInt(s, 10))
+  const outcome = (pair: string[], target: number): null | 'x' | 1 | 2 => {
+    const a = numOf(pair[0])
+    const b = numOf(pair[1])
+    if (a == null || b == null) return null
+    if (!validSet(a, b, target)) return 'x'
+    return a > b ? 1 : 2
+  }
+  const w1 = outcome(sets[0], 21)
+  const w2 = outcome(sets[1], 21)
+  // The 3rd set only opens when sets 1 & 2 are both valid and split 1–1.
+  const set3Open = w1 !== null && w1 !== 'x' && w2 !== null && w2 !== 'x' && w1 !== w2
+
+  // Clear any 3rd-set entry the moment it's no longer 1–1 (e.g. a 2–0 sweep).
+  useEffect(() => {
+    if (!set3Open && (sets[2][0] !== '' || sets[2][1] !== '')) {
+      setSets((prev) => prev.map((p, i) => (i === 2 ? ['', ''] : p)))
+    }
+  }, [set3Open]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function save() {
     const out: ([number, number] | null)[] = []
     for (let i = 0; i < 3; i++) {
+      const target = i === 2 ? 15 : 21
       const a = sets[i][0].trim()
       const b = sets[i][1].trim()
       if (a === '' && b === '') {
@@ -90,7 +126,17 @@ function ScoreRow({
         setStatus({ msg: t('admin.partialSet'), kind: 'error' })
         return
       }
-      out.push([parseInt(a, 10), parseInt(b, 10)])
+      if (i === 2 && !set3Open) {
+        setStatus({ msg: t('admin.set3Locked'), kind: 'error' })
+        return
+      }
+      const na = parseInt(a, 10)
+      const nb = parseInt(b, 10)
+      if (!validSet(na, nb, target)) {
+        setStatus({ msg: t('admin.invalidSet', { target }), kind: 'error' })
+        return
+      }
+      out.push([na, nb])
     }
     while (out.length && out[out.length - 1] === null) out.pop()
     const courtVal: number | '' = court.trim() === '' ? '' : parseInt(court, 10)
@@ -131,9 +177,15 @@ function ScoreRow({
 
         <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_56px] items-center gap-x-2 gap-y-1.5">
           <span />
-          {[1, 2, 3].map((n) => (
-            <span key={n} className="text-center text-xs font-bold uppercase text-muted-foreground">
-              {n}
+          {ROMAN.map((r, i) => (
+            <span
+              key={i}
+              className={cn(
+                'text-center text-xs font-bold uppercase',
+                i === 2 && !set3Open ? 'text-muted-foreground/40' : 'text-muted-foreground'
+              )}
+            >
+              {r}
             </span>
           ))}
           {[match.team1.teamName, match.team2.teamName].map((name, ti) => (
@@ -148,8 +200,9 @@ function ScoreRow({
                   max={99}
                   value={sets[si][ti]}
                   onChange={(e) => setCell(si, ti, e.target.value)}
-                  className="h-10 px-1 text-center"
-                  aria-label={`Set ${si + 1}`}
+                  disabled={si === 2 && !set3Open}
+                  className={cn('h-10 px-1 text-center', si === 2 && !set3Open && 'opacity-40')}
+                  aria-label={`Set ${ROMAN[si]}`}
                 />
               ))}
             </div>

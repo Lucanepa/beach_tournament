@@ -36,6 +36,8 @@ const de = {
   'admin.noScores': 'Keine Spiele zum Bearbeiten.',
   'admin.saveError': 'Fehler beim Speichern',
   'admin.partialSet': 'Bitte beide Satzergebnisse eingeben.',
+  'admin.invalidSet': 'Ungültiger Satz (bis {target}, 2 Punkte Vorsprung).',
+  'admin.set3Locked': '3. Satz nur bei 1:1.',
   'admin.sessionExpired': 'Sitzung abgelaufen – bitte erneut anmelden.',
 
   'court.free': 'Frei',
@@ -133,6 +135,8 @@ const en: typeof de = {
   'admin.noScores': 'No matches to edit.',
   'admin.saveError': 'Error saving',
   'admin.partialSet': 'Please enter both set scores.',
+  'admin.invalidSet': 'Invalid set (to {target}, win by 2).',
+  'admin.set3Locked': 'Set 3 only opens at 1–1.',
   'admin.sessionExpired': 'Session expired — please log in again.',
 
   'court.free': 'Free',
