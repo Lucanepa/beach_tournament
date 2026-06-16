@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* ── ZuZu Beach brand tokens (Tailwind v4) ─────────────────────── */
+@theme {
+  --color-coral: #ef5a45;
+  --color-coral-dark: #d8442f;
+  --color-coral-light: #ff7c6a;
+  --color-sun: #f7a23b;
+  --color-sun-dark: #e08a20;
+  --color-navy: #16233f;
+  --color-ocean: #1f6f8f;
+  --color-ocean-dark: #155a74;
+  --color-sand: #fcf8f1;
+  --color-sand-2: #f1e9dc;
+  --color-success: #2f9e63;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── shadcn semantic tokens, recolored to ZuZu (light theme) ───── */
+:root {
+  --radius: 0.75rem;
+  --background: #fcf8f1;
+  --foreground: #16233f;
+  --card: #ffffff;
+  --card-foreground: #16233f;
+  --popover: #ffffff;
+  --popover-foreground: #16233f;
+  --primary: #ef5a45;
+  --primary-foreground: #ffffff;
+  --secondary: #f4ecdf;
+  --secondary-foreground: #16233f;
+  --muted: #f1e9dc;
+  --muted-foreground: #6b7589;
+  --accent: #eef6f9;
+  --accent-foreground: #155a74;
+  --destructive: #e0392b;
+  --destructive-foreground: #ffffff;
+  --border: #e8e2d6;
+  --input: #e8e2d6;
+  --ring: #ef5a45;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(247,162,59,0.10), transparent 60%),
+      radial-gradient(1000px 500px at -10% 110%, rgba(31,111,143,0.08), transparent 55%),
+      linear-gradient(160deg, #fcf8f1 0%, #f1e9dc 100%);
+    background-attachment: fixed;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+}
+
+/* ── Aceternity/Magic-UI style effects (hand-built, no 3D libs) ─── */
+
+/* Aurora gradient wash for hero/section backgrounds */
+@keyframes aurora {
+  0%, 100% { background-position: 0% 50%, 100% 50%; }
+  50%      { background-position: 100% 50%, 0% 50%; }
+}
+.aurora {
+  background-image:
+    radial-gradient(40% 60% at 20% 30%, rgba(239,90,69,0.20), transparent 70%),
+    radial-gradient(40% 60% at 80% 70%, rgba(247,162,59,0.20), transparent 70%),
+    radial-gradient(50% 60% at 60% 20%, rgba(31,111,143,0.16), transparent 70%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: aurora 14s ease-in-out infinite;
+}
+
+/* Shimmer sweep for buttons/badges */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.shimmer { position: relative; overflow: hidden; }
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+  animation: shimmer 2.6s ease-in-out infinite;
+}
+
+/* Animated gradient border (spotlight card frame) */
+@keyframes borderSpin { to { --angle: 360deg; } }
+@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.gradient-border {
+  position: relative;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    conic-gradient(from var(--angle), var(--color-coral), var(--color-sun), var(--color-ocean), var(--color-coral)) border-box;
+  border: 1.5px solid transparent;
+  animation: borderSpin 6s linear infinite;
+}
+
+/* Live-match breathing glow */
+@keyframes nowPlaying {
+  0%, 100% { box-shadow: 0 2px 8px -3px rgba(239,90,69,0.18); }
+  50%      { box-shadow: 0 6px 20px -3px rgba(239,90,69,0.40); }
+}
+.now-playing { animation: nowPlaying 3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora, .shimmer::after, .gradient-border, .now-playing { animation: none !important; }
+}
