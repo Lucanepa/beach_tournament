@@ -53,11 +53,11 @@
   --radius-xl: 1rem;
   --radius-full: 9999px;
 
-  /* Shadows (warm navy-tinted, layered for soft outdoor-readable depth) */
-  --shadow-sm: 0 1px 2px rgba(22,35,63,0.06);
-  --shadow-md: 0 1px 2px -1px rgba(22,35,63,0.06), 0 6px 18px -8px rgba(22,35,63,0.14);
-  --shadow-lg: 0 2px 4px -2px rgba(22,35,63,0.08), 0 16px 36px -12px rgba(22,35,63,0.18);
-  --shadow-xl: 0 8px 16px -6px rgba(22,35,63,0.12), 0 28px 50px -14px rgba(22,35,63,0.22);
+  /* Shadows — warm stone-tinted, layered soft elevation (svrz_rc style) */
+  --shadow-sm: 0 1px 2px -1px rgba(28,25,23,0.06);
+  --shadow-md: 0 1px 2px -1px rgba(28,25,23,0.06), 0 6px 20px -8px rgba(28,25,23,0.12);
+  --shadow-lg: 0 2px 4px -2px rgba(28,25,23,0.08), 0 16px 40px -12px rgba(28,25,23,0.16);
+  --shadow-xl: 0 8px 16px -6px rgba(28,25,23,0.10), 0 28px 56px -14px rgba(28,25,23,0.20);
   /* Focus ring (coral halo) */
   --ring: 0 0 0 3px rgba(239,90,69,0.35);
 
@@ -375,7 +375,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .court-card {
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-lg);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
@@ -467,12 +467,12 @@ h1, h2, h3, h4, h5, h6 {
   padding: var(--space-md);
   border-left: 4px solid var(--border);
 }
-.match-slot.current { border-left-color: var(--coral); background: #fff1ee; animation: nowPlaying 2.6s ease-in-out infinite; }
+.match-slot.current { border-left-color: var(--coral); background: #fff1ee; animation: nowPlaying 3.4s ease-in-out infinite; }
 .match-slot.next { border-left-color: var(--ocean); background: #eef6f9; }
-/* Gentle breathing glow so the live match stands out on a big screen. */
+/* Calm breathing glow so the live match stands out without being flashy. */
 @keyframes nowPlaying {
-  0%, 100% { box-shadow: 0 2px 6px -2px rgba(239,90,69,0.20); }
-  50%      { box-shadow: 0 4px 18px -2px rgba(239,90,69,0.45); }
+  0%, 100% { box-shadow: 0 2px 8px -3px rgba(239,90,69,0.14); }
+  50%      { box-shadow: 0 3px 14px -3px rgba(239,90,69,0.28); }
 }
 
 .match-status-badge {
@@ -613,7 +613,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ── Match Cards (all games) ───────────────────────────────── */
 .match-card {
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-lg);
   margin-bottom: var(--space-md);
   box-shadow: var(--shadow-sm);
@@ -740,7 +740,7 @@ h1, h2, h3, h4, h5, h6 {
 .tab-content.active { display: block; }
 
 /* ── Standings Table ───────────────────────────────────────── */
-.standings-container { padding: var(--space-md); background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border); overflow-x: auto; }
+.standings-container { padding: var(--space-md); background: var(--surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--border); overflow-x: auto; }
 .standings-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .standings-table th, .standings-table td { padding: var(--space-sm) var(--space-md); text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .standings-table th:first-child, .standings-table td:first-child { min-width: 60px; text-align: left; }
@@ -769,7 +769,7 @@ h1, h2, h3, h4, h5, h6 {
   max-width: none;
   position: relative;
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: 10px;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
