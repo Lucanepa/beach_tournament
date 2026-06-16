@@ -19,8 +19,8 @@
   --ocean-dark: #155a74;
 
   /* Surfaces */
-  --bg-sand: #fdf4e8;
-  --bg-sand-2: #f7e6cf;
+  --bg-sand: #fcf8f1;
+  --bg-sand-2: #f1e9dc;
   --surface: #ffffff;
   --surface-alt: #fbf6ee;    /* warm light section */
 
@@ -382,7 +382,7 @@ h1, h2, h3, h4, h5, h6 {
   border-top: 4px solid var(--coral);
   transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
-.court-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.court-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 
 /* Free court (no current game) → dimmed/muted card */
 .court-card.court-free {
@@ -621,7 +621,7 @@ h1, h2, h3, h4, h5, h6 {
   border-left: 4px solid var(--coral);
   transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
-.match-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.match-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .match-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-sm); flex-wrap: wrap; }
 .match-content { display: flex; justify-content: space-between; align-items: center; gap: var(--space-xl); }
 .match-teams { display: flex; flex-direction: column; gap: var(--space-sm); flex: 1; }
