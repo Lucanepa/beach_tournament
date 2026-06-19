@@ -13,24 +13,26 @@ import { cn } from '@/lib/utils'
 
 // Columns ordered so the FINAL sits in the centre: winners flow in from the
 // left, losers flow in from the right, finals in the middle.
-const COLUMNS: { key: string; nums: number[] }[] = [
+const COLUMNS: { key: string; nums: number[]; center?: boolean }[] = [
   { key: 'bracket.roundI', nums: [1, 2, 3, 4, 5, 6, 7, 8] },
   { key: 'bracket.winnerR1', nums: [13, 14, 15, 16] },
   { key: 'bracket.winnerR2', nums: [21, 22] },
   { key: 'bracket.semifinals', nums: [27, 28] },
-  { key: 'bracket.finals', nums: [30, 29] },
+  // Final (30) + 3rd/4th (29) clustered at the vertical centre so both
+  // semifinals feed the final with clean converging lines (no X-crossing).
+  { key: 'bracket.finals', nums: [30, 29], center: true },
   { key: 'bracket.loserR4', nums: [25, 26] },
   { key: 'bracket.loserR3', nums: [23, 24] },
   { key: 'bracket.loserR2', nums: [17, 18, 19, 20] },
-  { key: 'bracket.loserR1', nums: [9, 10, 11, 12] },
+  // Ordered 12→9 (top→bottom) so the loser R1→R2 advancement lines stay straight.
+  { key: 'bracket.loserR1', nums: [12, 11, 10, 9] },
 ]
 
-// Advancement edges [from, to]: the winner of `from` plays in `to`. Drawn as
-// elbow connectors so each match links to the two games that feed it — exactly
-// like a paper bracket. Long loser-drop feeds (a winners-bracket loser falling
-// across to the far loser column) are intentionally omitted: in the centre-final
-// layout they would span the whole sheet and turn into a tangle of crossing
-// lines. The "Winner Match #N" labels on the cards still convey those feeds.
+// Edges [from, to] drawn as elbow connectors — the WINNER of `from` advances to
+// `to`. Loser-drop feeds (a winners-bracket loser falling into the loser bracket,
+// and the semifinal losers dropping into the 3rd-place match) are NOT drawn: in
+// the centre-final layout they'd span the whole sheet. They're conveyed by the
+// "Loser Match #N" labels on the cards instead, exactly like the paper bracket.
 const EDGES: [number, number][] = [
   // Winners R1 → R2
   [1, 13], [2, 13], [3, 14], [4, 14], [5, 15], [6, 15], [7, 16], [8, 16],
@@ -38,10 +40,13 @@ const EDGES: [number, number][] = [
   [13, 21], [14, 21], [15, 22], [16, 22],
   // Winners R3 → Semifinals
   [21, 27], [22, 28],
-  // Semifinals → Final / 3rd place
-  [27, 30], [28, 30], [27, 29], [28, 29],
-  // Losers R1 → R2
-  [9, 17], [10, 18], [11, 19], [12, 20],
+  // Losers' bracket final → Semifinals — the cross-bracket feed where a
+  // semifinalist's opponent comes from the far loser column, not a neighbour.
+  [25, 27], [26, 28],
+  // Semifinals → Final (winners advance; the 3rd-place feeders are labels)
+  [27, 30], [28, 30],
+  // Losers R1 → R2 (reversed pairing keeps the lines straight given column order)
+  [12, 17], [11, 18], [10, 19], [9, 20],
   // Losers R2 → R3
   [17, 23], [18, 23], [19, 24], [20, 24],
   // Losers R3 → R4
@@ -280,7 +285,10 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
                     <div className={cn('mb-3 text-center text-xs font-bold uppercase tracking-wide', isFinalCol ? 'text-coral' : 'text-muted-foreground')}>
                       {t(col.key)}
                     </div>
-                    <div className="flex flex-1 flex-col justify-around" style={{ minHeight: COL_STACK_MIN_H }}>
+                    <div
+                      className={cn('flex flex-1 flex-col', col.center ? 'justify-center gap-10' : 'justify-around')}
+                      style={{ minHeight: COL_STACK_MIN_H }}
+                    >
                       {col.nums.map((n) => (
                         <BracketMatch
                           key={n}
