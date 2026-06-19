@@ -281,24 +281,37 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
               {COLUMNS.map((col) => {
                 const isFinalCol = col.key === 'bracket.finals'
                 return (
-                  <div key={col.key} className={cn('flex w-40 shrink-0 flex-col', isFinalCol && 'w-44')}>
+                  <div key={col.key} className={cn('flex shrink-0 flex-col', col.center ? 'w-[23rem]' : isFinalCol ? 'w-44' : 'w-40')}>
                     <div className={cn('mb-3 text-center text-xs font-bold uppercase tracking-wide', isFinalCol ? 'text-coral' : 'text-muted-foreground')}>
                       {t(col.key)}
                     </div>
-                    <div
-                      className={cn('flex flex-1 flex-col', col.center ? 'justify-center gap-10' : 'justify-around')}
-                      style={{ minHeight: COL_STACK_MIN_H }}
-                    >
-                      {col.nums.map((n) => (
-                        <BracketMatch
-                          key={n}
-                          match={byNum.get(n)}
-                          num={n}
-                          hidden={!!team && !pathSet.has(n)}
-                          highlighted={!!team && pathSet.has(n)}
-                        />
-                      ))}
-                    </div>
+                    {col.center ? (
+                      // Final + 3rd/4th sit on the same row at the vertical centre.
+                      <div className="flex flex-1 items-center justify-center gap-4" style={{ minHeight: COL_STACK_MIN_H }}>
+                        {col.nums.map((n) => (
+                          <div key={n} className="w-44 shrink-0">
+                            <BracketMatch
+                              match={byNum.get(n)}
+                              num={n}
+                              hidden={!!team && !pathSet.has(n)}
+                              highlighted={!!team && pathSet.has(n)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-1 flex-col justify-around" style={{ minHeight: COL_STACK_MIN_H }}>
+                        {col.nums.map((n) => (
+                          <BracketMatch
+                            key={n}
+                            match={byNum.get(n)}
+                            num={n}
+                            hidden={!!team && !pathSet.has(n)}
+                            highlighted={!!team && pathSet.has(n)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
