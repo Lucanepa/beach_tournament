@@ -154,3 +154,31 @@
 @media (prefers-reduced-motion: reduce) {
   .aurora, .shimmer::after, .gradient-border, .now-playing { animation: none !important; }
 }
+
+/* ── Mobile: show the wide tableau in landscape automatically ──────
+   On a phone held in portrait we rotate the whole tableau 90° so the
+   wide bracket fills the long screen edge. When the phone is turned to
+   landscape this query stops matching and the normal (already wide)
+   layout shows — so the tableau is always readable in landscape. */
+@media (max-width: 768px) and (orientation: portrait) {
+  .tableau-landscape {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vh;
+    height: 100vw;
+    width: 100dvh;
+    height: 100dvw;
+    transform-origin: top left;
+    transform: translateX(100vw) rotate(90deg);
+    transform: translateX(100dvw) rotate(90deg);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 40;
+    padding: 12px 16px 24px;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(247,162,59,0.10), transparent 60%),
+      linear-gradient(160deg, #fcf8f1 0%, #f1e9dc 100%);
+  }
+}

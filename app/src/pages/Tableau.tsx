@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toPng } from 'html-to-image'
-import { ZoomIn, ZoomOut, RotateCcw, Download } from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCcw, Download, Clock, MapPin } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
 import { useSelectedTournament } from '@/lib/useSelectedTournament'
 import { tournamentLabel, type Match } from '@/lib/tournament'
@@ -64,11 +64,27 @@ function BracketMatch({ match, num }: { match?: Match; num: number }) {
         : t('bracket.match', { n: num })
   const win1 = s1 !== '-' && s2 !== '-' && Number(s1) > Number(s2)
   const win2 = s1 !== '-' && s2 !== '-' && Number(s2) > Number(s1)
+  const timeStr = match?.time && match.time !== 'TBD' ? match.time : ''
+  const courtStr = match?.court && match.court !== 'TBD' ? match.court : ''
   return (
     <div className={cn('relative rounded-lg border bg-card p-2 pt-3 shadow-sm', isFinal ? 'border-sun bg-[#fffaf0]' : 'border-border')}>
       <span className={cn('absolute -top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white', isFinal ? 'bg-sun text-navy' : 'bg-coral')}>
         {label}
       </span>
+      {(timeStr || courtStr) && (
+        <div className="mb-1 flex items-center justify-end gap-2 text-[9px] font-medium tabular-nums text-muted-foreground">
+          {timeStr && (
+            <span className="inline-flex items-center gap-0.5">
+              <Clock className="size-2.5" /> {timeStr}
+            </span>
+          )}
+          {courtStr && (
+            <span className="inline-flex items-center gap-0.5">
+              <MapPin className="size-2.5" /> {courtStr}
+            </span>
+          )}
+        </div>
+      )}
       {[
         { name: match?.team1?.teamName || 'TBD', s: s1, win: win1 },
         { name: match?.team2?.teamName || 'TBD', s: s2, win: win2 },
@@ -194,7 +210,7 @@ export default function Tableau() {
   const lang = i18n.language?.startsWith('en') ? 'en' : 'de'
 
   return (
-    <div>
+    <div className="tableau-landscape">
       <h1 className="mb-6 text-3xl font-extrabold uppercase tracking-tight text-navy">{t('heading.tableau')}</h1>
       <TournamentSwitcher value={sel} onChange={setSel} />
 
