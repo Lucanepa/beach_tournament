@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { CalendarX, Info } from 'lucide-react'
+import { CalendarX, Info, UserX } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
 import { getSettings } from '@/lib/settings'
 import { getNotes } from '@/lib/api'
-import { scheduleCompare, type Match } from '@/lib/tournament'
+import { matchHasTeam, scheduleCompare, teamNames, type Match } from '@/lib/tournament'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { TeamFilter } from '@/components/TeamFilter'
 
-function MatchSlot({ match, type }: { match: Match; type: 'current' | 'next' }) {
+function MatchSlot({ match, type, highlight }: { match: Match; type: 'current' | 'next'; highlight?: string | null }) {
   const { t } = useTranslation()
   return (
     <div
@@ -25,14 +26,19 @@ function MatchSlot({ match, type }: { match: Match; type: 'current' | 'next' }) 
         <span className="text-xs font-bold text-ocean-dark">{match.sex}</span>
       </div>
       <div className="space-y-1">
-        {[match.team1.teamName, match.team2.teamName].map((name, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-coral text-[11px] font-bold text-white">
-              {i === 0 ? 'A' : 'B'}
-            </span>
-            <span className="truncate text-sm font-semibold text-navy">{name}</span>
-          </div>
-        ))}
+        {[match.team1.teamName, match.team2.teamName].map((name, i) => {
+          const isTeam = highlight && name.trim() === highlight.trim()
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-coral text-[11px] font-bold text-white">
+                {i === 0 ? 'A' : 'B'}
+              </span>
+              <span className={cn('truncate text-sm font-semibold text-navy', isTeam && 'rounded bg-sun/25 px-1 font-extrabold text-sun-dark')}>
+                {name}
+              </span>
+            </div>
+          )
+        })}
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         {match.time && match.time !== 'TBD' ? (
@@ -48,7 +54,7 @@ function MatchSlot({ match, type }: { match: Match; type: 'current' | 'next' }) 
   )
 }
 
-function CourtCard({ court, matches, index }: { court: string; matches: Match[]; index: number }) {
+function CourtCard({ court, matches, index, highlight }: { court: string; matches: Match[]; index: number; highlight?: string | null }) {
   const { t } = useTranslation()
   const sorted = [...matches].sort(scheduleCompare)
   const current = sorted.find((m) => m.status === 'open')
@@ -90,8 +96,8 @@ function CourtCard({ court, matches, index }: { court: string; matches: Match[];
             {t('court.free')}
           </div>
         )}
-        {current && <MatchSlot match={current} type="current" />}
-        {next && <MatchSlot match={next} type="next" />}
+        {current && <MatchSlot match={current} type="current" highlight={highlight} />}
+        {next && <MatchSlot match={next} type="next" highlight={highlight} />}
         {!current && !next && (
           <p className={cn('py-2 text-sm italic', tone === 'none' ? 'text-muted-foreground' : 'text-white/90')}>
             {t('court.noMatchesScheduled')}
@@ -125,6 +131,8 @@ export default function Courts() {
   }, [])
   const note = lang === 'en' ? notes.notesEn || notes.notesDe : notes.notesDe || notes.notesEn
 
+  const [team, setTeam] = useState<string | null>(null)
+
   const men = data?.men
   const women = data?.women
 
@@ -142,6 +150,21 @@ export default function Courts() {
     ...(useMen ? (men?.matches || []).filter((m) => m.court === court) : []),
     ...(useWomen ? (women?.matches || []).filter((m) => m.court === court) : []),
   ]
+
+  // Team picker spans both tournaments; selecting one keeps only the courts
+  // where that team is currently playing or up next.
+  const teams = teamNames([
+    ...(useMen ? men?.matches || [] : []),
+    ...(useWomen ? women?.matches || [] : []),
+  ])
+  const shownCourts = team
+    ? courts.filter((court) => {
+        const sorted = matchesForCourt(court).sort(scheduleCompare)
+        const current = sorted.find((m) => m.status === 'open')
+        const next = sorted.find((m) => m.status === 'upcoming')
+        return (current && matchHasTeam(current, team)) || (next && matchHasTeam(next, team))
+      })
+    : courts
 
   return (
     <div>
@@ -161,6 +184,10 @@ export default function Courts() {
         </div>
       )}
 
+      {!isLoading && courts.length > 0 && (
+        <TeamFilter teams={teams} value={team} onChange={setTeam} />
+      )}
+
       {isLoading && !data ? (
         <p className="py-12 text-center text-muted-foreground">{t('loading.matches')}</p>
       ) : courts.length === 0 ? (
@@ -169,10 +196,16 @@ export default function Courts() {
           <h3 className="text-xl font-bold uppercase text-navy">{t('court.noCourts')}</h3>
           <p className="text-muted-foreground">{t('empty.noMatchesIndex')}</p>
         </div>
+      ) : shownCourts.length === 0 ? (
+        <div className="py-16 text-center">
+          <UserX className="mx-auto mb-3 size-12 text-border" />
+          <h3 className="text-xl font-bold uppercase text-navy">{team}</h3>
+          <p className="text-muted-foreground">{t('empty.teamNotScheduled', { team })}</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {courts.map((court, i) => (
-            <CourtCard key={court} court={court} matches={matchesForCourt(court)} index={i} />
+          {shownCourts.map((court, i) => (
+            <CourtCard key={court} court={court} matches={matchesForCourt(court)} index={i} highlight={team} />
           ))}
         </div>
       )}

@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toPng } from 'html-to-image'
 import { ZoomIn, ZoomOut, RotateCcw, Download, Clock, MapPin } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
 import { useSelectedTournament } from '@/lib/useSelectedTournament'
-import { tournamentLabel, type Match } from '@/lib/tournament'
+import { matchHasTeam, teamNames, tournamentLabel, type Match } from '@/lib/tournament'
 import { TournamentSwitcher } from '@/components/TournamentSwitcher'
+import { TeamFilter } from '@/components/TeamFilter'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -23,6 +24,34 @@ const COLUMNS: { key: string; nums: number[] }[] = [
   { key: 'bracket.loserR2', nums: [17, 18, 19, 20] },
   { key: 'bracket.loserR1', nums: [9, 10, 11, 12] },
 ]
+
+// Advancement edges [from, to]: the winner of `from` plays in `to`. Drawn as
+// elbow connectors so each match links to the two games that feed it — exactly
+// like a paper bracket. Long loser-drop feeds (a winners-bracket loser falling
+// across to the far loser column) are intentionally omitted: in the centre-final
+// layout they would span the whole sheet and turn into a tangle of crossing
+// lines. The "Winner Match #N" labels on the cards still convey those feeds.
+const EDGES: [number, number][] = [
+  // Winners R1 → R2
+  [1, 13], [2, 13], [3, 14], [4, 14], [5, 15], [6, 15], [7, 16], [8, 16],
+  // Winners R2 → R3
+  [13, 21], [14, 21], [15, 22], [16, 22],
+  // Winners R3 → Semifinals
+  [21, 27], [22, 28],
+  // Semifinals → Final / 3rd place
+  [27, 30], [28, 30], [27, 29], [28, 29],
+  // Losers R1 → R2
+  [9, 17], [10, 18], [11, 19], [12, 20],
+  // Losers R2 → R3
+  [17, 23], [18, 23], [19, 24], [20, 24],
+  // Losers R3 → R4
+  [23, 25], [24, 26],
+]
+
+// Min height of each column's match stack. With every column stretched to the
+// same height and `justify-around`, each match centres itself between its two
+// feeders (centre = H·(k+0.5)/n), so the connectors land as clean brackets.
+const COL_STACK_MIN_H = 820
 
 function bracketScores(m?: Match): [string, string] {
   if (!m) return ['-', '-']
@@ -52,7 +81,17 @@ function bracketScores(m?: Match): [string, string] {
   return ['-', '-']
 }
 
-function BracketMatch({ match, num }: { match?: Match; num: number }) {
+function BracketMatch({
+  match,
+  num,
+  hidden,
+  highlighted,
+}: {
+  match?: Match
+  num: number
+  hidden?: boolean
+  highlighted?: boolean
+}) {
   const { t } = useTranslation()
   const [s1, s2] = bracketScores(match)
   const isFinal = num === 29 || num === 30
@@ -67,7 +106,15 @@ function BracketMatch({ match, num }: { match?: Match; num: number }) {
   const timeStr = match?.time && match.time !== 'TBD' ? match.time : ''
   const courtStr = match?.court && match.court !== 'TBD' ? match.court : ''
   return (
-    <div className={cn('relative rounded-lg border bg-card p-2 pt-3 shadow-sm', isFinal ? 'border-sun bg-[#fffaf0]' : 'border-border')}>
+    <div
+      data-match={num}
+      className={cn(
+        'relative rounded-lg border bg-card p-2 pt-3 shadow-sm transition-shadow',
+        isFinal ? 'border-sun bg-[#fffaf0]' : 'border-border',
+        highlighted && 'border-sun bg-[#fffaf0] shadow-md ring-2 ring-sun',
+        hidden && 'invisible'
+      )}
+    >
       <span className={cn('absolute -top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white', isFinal ? 'bg-sun text-navy' : 'bg-coral')}>
         {label}
       </span>
@@ -101,8 +148,63 @@ function BracketMatch({ match, num }: { match?: Match; num: number }) {
 function Bracket({ matches, label }: { matches: Match[]; label: string }) {
   const { t } = useTranslation()
   const captureRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(0.85)
   const [busy, setBusy] = useState(false)
+  const [team, setTeam] = useState<string | null>(null)
+  const [paths, setPaths] = useState<string[]>([])
+  const [svgSize, setSvgSize] = useState({ w: 0, h: 0 })
+
+  const teams = teamNames(matches)
+  // The team's path = the games where its name currently appears, ordered by
+  // match number (which follows tournament progression). Connecting consecutive
+  // path games draws the team's route — including the loser drop — as one clean
+  // gold line, because everything else is hidden.
+  const pathNums = team
+    ? [...new Set(matches.filter((m) => matchHasTeam(m, team)).map((m) => m.matchNumber).filter(Boolean))].sort(
+        (a, b) => a - b
+      )
+    : []
+  const pathSet = new Set(pathNums)
+
+  // Measure card positions (layout px, unaffected by the CSS zoom transform) and
+  // build an elbow path for every connector. Without a team filter the structural
+  // advancement edges are drawn; with one, only the selected team's path.
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    const edges: [number, number][] = team
+      ? pathNums.slice(0, -1).map((n, i) => [n, pathNums[i + 1]])
+      : EDGES
+    const compute = () => {
+      const cards = new Map<number, HTMLElement>()
+      grid.querySelectorAll<HTMLElement>('[data-match]').forEach((el) => {
+        cards.set(Number(el.dataset.match), el)
+      })
+      const next: string[] = []
+      for (const [a, b] of edges) {
+        const ea = cards.get(a)
+        const eb = cards.get(b)
+        if (!ea || !eb) continue
+        const ay = ea.offsetTop + ea.offsetHeight / 2
+        const by = eb.offsetTop + eb.offsetHeight / 2
+        // Exit the source on the side that faces the target, enter the target
+        // on the facing side — works for both winner (L→R) and loser (R→L) flow.
+        const sx = ea.offsetLeft < eb.offsetLeft ? ea.offsetLeft + ea.offsetWidth : ea.offsetLeft
+        const ex = ea.offsetLeft < eb.offsetLeft ? eb.offsetLeft : eb.offsetLeft + eb.offsetWidth
+        const mx = (sx + ex) / 2
+        next.push(`M ${sx} ${ay} L ${mx} ${ay} L ${mx} ${by} L ${ex} ${by}`)
+      }
+      setPaths(next)
+      setSvgSize({ w: grid.scrollWidth, h: grid.scrollHeight })
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(grid)
+    return () => ro.disconnect()
+    // pathNums is derived from matches + team, so those two deps cover it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, team])
 
   if (matches.length === 0)
     return <p className="py-12 text-center italic text-muted-foreground">{t('bracket.empty')}</p>
@@ -125,6 +227,11 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
 
   return (
     <div>
+      <TeamFilter teams={teams} value={team} onChange={setTeam} />
+      {team && pathNums.length === 0 && (
+        <p className="mb-3 text-sm italic text-muted-foreground">{t('empty.teamNoPath', { team })}</p>
+      )}
+
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button variant="outline" size="icon" onClick={() => setZoom((z) => Math.max(0.4, +(z - 0.15).toFixed(2)))} aria-label="Zoom out">
           <ZoomOut />
@@ -145,7 +252,27 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
         <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: 'max-content' }}>
           <div ref={captureRef} className="w-max bg-transparent p-4">
             <div className="mb-3 text-center text-sm font-bold uppercase tracking-wide text-navy">{label}</div>
-            <div className="flex items-stretch gap-4">
+            <div ref={gridRef} className="relative flex items-stretch gap-4">
+              <svg
+                className="pointer-events-none absolute left-0 top-0"
+                width={svgSize.w}
+                height={svgSize.h}
+                style={{ overflow: 'visible' }}
+                aria-hidden
+              >
+                {paths.map((d, i) => (
+                  <path
+                    key={i}
+                    d={d}
+                    fill="none"
+                    stroke={team ? '#f7a23b' : '#6b7589'}
+                    strokeOpacity={team ? 0.95 : 0.45}
+                    strokeWidth={team ? 2.5 : 1.75}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ))}
+              </svg>
               {COLUMNS.map((col) => {
                 const isFinalCol = col.key === 'bracket.finals'
                 return (
@@ -153,9 +280,15 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
                     <div className={cn('mb-3 text-center text-xs font-bold uppercase tracking-wide', isFinalCol ? 'text-coral' : 'text-muted-foreground')}>
                       {t(col.key)}
                     </div>
-                    <div className="flex flex-1 flex-col justify-center gap-3">
+                    <div className="flex flex-1 flex-col justify-around" style={{ minHeight: COL_STACK_MIN_H }}>
                       {col.nums.map((n) => (
-                        <BracketMatch key={n} match={byNum.get(n)} num={n} />
+                        <BracketMatch
+                          key={n}
+                          match={byNum.get(n)}
+                          num={n}
+                          hidden={!!team && !pathSet.has(n)}
+                          highlighted={!!team && pathSet.has(n)}
+                        />
                       ))}
                     </div>
                   </div>
@@ -223,7 +356,7 @@ export default function Tableau() {
             <TabsTrigger value="standings">{t('tabs.standings')}</TabsTrigger>
           </TabsList>
           <TabsContent value="bracket">
-            <Bracket matches={td?.matches || []} label={tournamentLabel(sel, lang)} />
+            <Bracket key={sel} matches={td?.matches || []} label={tournamentLabel(sel, lang)} />
           </TabsContent>
           <TabsContent value="standings">
             <Standings rows={td?.standings || []} />

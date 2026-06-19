@@ -57,6 +57,31 @@ export function tournamentLabel(key: string, lang: 'de' | 'en'): string {
   return (raw as string) || key
 }
 
+// Placeholder slot labels that aren't real entrants: "Winner Match #21",
+// "Loser Match #22", "Seed #16", "Team 1/2", "TBD". The team picker must only
+// offer actual teams.
+const PLACEHOLDER_TEAM = /^(?:winner|loser)\s+match\s*#?\s*\d+$|^seed\s*#?\s*\d+$|^team\s*[12]$|^tbd$/i
+
+export function isRealTeam(name?: string | null): boolean {
+  const s = (name ?? '').trim()
+  return s !== '' && !PLACEHOLDER_TEAM.test(s)
+}
+
+/** Distinct real team names found across the given matches, alphabetically. */
+export function teamNames(matches: Match[]): string[] {
+  const set = new Set<string>()
+  for (const m of matches) {
+    if (isRealTeam(m.team1?.teamName)) set.add(m.team1.teamName.trim())
+    if (isRealTeam(m.team2?.teamName)) set.add(m.team2.teamName.trim())
+  }
+  return [...set].sort((a, b) => a.localeCompare(b))
+}
+
+export function matchHasTeam(m: Match, team: string): boolean {
+  const tn = team.trim()
+  return m.team1?.teamName?.trim() === tn || m.team2?.teamName?.trim() === tn
+}
+
 export function availableTournaments(): string[] {
   const keys = Object.keys(DATA_SOURCES)
   const selected = getSettings().tournaments
