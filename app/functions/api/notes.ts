@@ -1,29 +1,30 @@
 // Cloudflare Pages Function — /api/notes
 //   GET  → public read of the organizer notes (shown on the start page).
-//   POST → admin-authenticated write (verifies the session token, then forwards
-//          to the Apps Script Property store).
-// Env: ADMIN_PIN, APPSCRIPT_URL, APPSCRIPT_SECRET
+//   POST → admin-authenticated write (verifies the session token).
+// Notes live in Cloudflare KV (binding: NOTES) — a native store, so there is no
+// external fetch / redirect involved (the Apps Script POST path was unreliable
+// in production). Env: ADMIN_PIN. Binding: NOTES (KV namespace).
+
+const DE_KEY = 'notesDe'
+const EN_KEY = 'notesEn'
 
 export const onRequestGet = async (context: any) => {
-  const { APPSCRIPT_URL: url, APPSCRIPT_SECRET: secret } = context.env
-  // Degrade gracefully — never break the start page if the backend is missing.
-  if (!url || !secret) return json(200, { ok: true, notesDe: '', notesEn: '' })
+  const kv = context.env.NOTES
+  // Degrade gracefully — never break the start page if the binding is missing.
+  if (!kv) return json(200, { ok: true, notesDe: '', notesEn: '' })
   try {
-    const u = `${url}${url.includes('?') ? '&' : '?'}action=getNotes&secret=${encodeURIComponent(secret)}`
-    const data = await callAppsScriptGet(u)
-    if (data && data.ok) {
-      return json(200, { ok: true, notesDe: String(data.notesDe || ''), notesEn: String(data.notesEn || '') })
-    }
+    const [de, en] = await Promise.all([kv.get(DE_KEY), kv.get(EN_KEY)])
+    return json(200, { ok: true, notesDe: de || '', notesEn: en || '' })
   } catch {
-    /* fall through to empty */
+    return json(200, { ok: true, notesDe: '', notesEn: '' })
   }
-  return json(200, { ok: true, notesDe: '', notesEn: '' })
 }
 
 export const onRequestPost = async (context: any) => {
   try {
-    const { ADMIN_PIN: pin, APPSCRIPT_URL: url, APPSCRIPT_SECRET: secret } = context.env
-    if (!pin || !url || !secret) return json(500, { ok: false, error: 'not_configured' })
+    const { ADMIN_PIN: pin, NOTES: kv } = context.env
+    if (!pin) return json(500, { ok: false, error: 'not_configured' })
+    if (!kv) return json(500, { ok: false, error: 'kv_unbound' })
 
     let body: any
     try {
@@ -36,14 +37,7 @@ export const onRequestPost = async (context: any) => {
 
     const notesDe = clampNote(body.notesDe)
     const notesEn = clampNote(body.notesEn)
-
-    let data: any
-    try {
-      data = await callAppsScriptPost(url, { secret, action: 'setNotes', notesDe, notesEn })
-    } catch (e: any) {
-      return json(502, { ok: false, error: 'sheet_unreachable', detail: String(e && (e.message || e)).slice(0, 160) })
-    }
-    if (!data || !data.ok) return json(502, { ok: false, error: (data && data.error) || 'write_failed' })
+    await Promise.all([kv.put(DE_KEY, notesDe), kv.put(EN_KEY, notesEn)])
     return json(200, { ok: true, notesDe, notesEn })
   } catch (err: any) {
     return json(500, { ok: false, error: 'exception', detail: String((err && (err.stack || err.message)) || err).slice(0, 300) })
@@ -52,42 +46,6 @@ export const onRequestPost = async (context: any) => {
 
 function clampNote(v: any): string {
   return typeof v === 'string' ? v.slice(0, 2000) : ''
-}
-
-// Apps Script answers /exec with a 302 → script.googleusercontent.com. The
-// Workers runtime needs that redirect followed explicitly to read the JSON
-// (see update-score.ts — same pattern, proven working). We read the body as
-// text first so a non-JSON reply (e.g. an HTML error/login page) surfaces as a
-// clear error string instead of an opaque failure.
-async function callAppsScriptGet(u: string): Promise<any> {
-  return appsScript(u, { method: 'GET', redirect: 'manual' })
-}
-
-async function callAppsScriptPost(url: string, forward: any): Promise<any> {
-  return appsScript(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(forward),
-    redirect: 'manual',
-  })
-}
-
-async function appsScript(url: string, init: RequestInit): Promise<any> {
-  let res = await fetch(url, init)
-  console.log('notes: appscript first status', res.status)
-  if (res.status >= 300 && res.status < 400) {
-    const loc = res.headers.get('location')
-    console.log('notes: redirect ->', loc ? loc.slice(0, 90) : '(none)')
-    if (loc) res = await fetch(loc, { method: 'GET' })
-    console.log('notes: after redirect status', res.status)
-  }
-  const text = await res.text()
-  console.log('notes: appscript body', text.slice(0, 200))
-  try {
-    return JSON.parse(text)
-  } catch {
-    throw new Error(`non-JSON from appscript (status ${res.status}): ${text.slice(0, 140)}`)
-  }
 }
 
 async function verifyToken(token: any, key: string) {
