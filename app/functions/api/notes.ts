@@ -55,43 +55,39 @@ function clampNote(v: any): string {
 }
 
 // Apps Script answers /exec with a 302 → script.googleusercontent.com. The
-// Workers runtime needs that redirect followed explicitly to read the JSON,
-// otherwise the auto-follow can stall and yield a 502 (see update-score.ts).
-// Each leg is bounded by a timeout so a stalled Apps Script call surfaces as a
-// clean JSON error instead of letting the whole Function time out (Cloudflare 502).
-const APPSCRIPT_TIMEOUT_MS = 12000
-
-async function fetchWithTimeout(input: string, init: RequestInit): Promise<Response> {
-  const ctrl = new AbortController()
-  const id = setTimeout(() => ctrl.abort(), APPSCRIPT_TIMEOUT_MS)
-  try {
-    return await fetch(input, { ...init, signal: ctrl.signal })
-  } finally {
-    clearTimeout(id)
-  }
-}
-
+// Workers runtime needs that redirect followed explicitly to read the JSON
+// (see update-score.ts — same pattern, proven working). We read the body as
+// text first so a non-JSON reply (e.g. an HTML error/login page) surfaces as a
+// clear error string instead of an opaque failure.
 async function callAppsScriptGet(u: string): Promise<any> {
-  let res = await fetchWithTimeout(u, { method: 'GET', redirect: 'manual' })
-  if (res.status >= 300 && res.status < 400) {
-    const loc = res.headers.get('location')
-    if (loc) res = await fetchWithTimeout(loc, { method: 'GET' })
-  }
-  return res.json()
+  return appsScript(u, { method: 'GET', redirect: 'manual' })
 }
 
 async function callAppsScriptPost(url: string, forward: any): Promise<any> {
-  let res = await fetchWithTimeout(url, {
+  return appsScript(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(forward),
     redirect: 'manual',
   })
+}
+
+async function appsScript(url: string, init: RequestInit): Promise<any> {
+  let res = await fetch(url, init)
+  console.log('notes: appscript first status', res.status)
   if (res.status >= 300 && res.status < 400) {
     const loc = res.headers.get('location')
-    if (loc) res = await fetchWithTimeout(loc, { method: 'GET' })
+    console.log('notes: redirect ->', loc ? loc.slice(0, 90) : '(none)')
+    if (loc) res = await fetch(loc, { method: 'GET' })
+    console.log('notes: after redirect status', res.status)
   }
-  return res.json()
+  const text = await res.text()
+  console.log('notes: appscript body', text.slice(0, 200))
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error(`non-JSON from appscript (status ${res.status}): ${text.slice(0, 140)}`)
+  }
 }
 
 async function verifyToken(token: any, key: string) {
