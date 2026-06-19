@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { MapPin, Clock, Hash, Trophy, CalendarX } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
 import { useSelectedTournament } from '@/lib/useSelectedTournament'
-import { scheduleCompare, type Match } from '@/lib/tournament'
+import { type Match } from '@/lib/tournament'
 import { TournamentSwitcher } from '@/components/TournamentSwitcher'
 import { Badge } from '@/components/ui/badge'
 
@@ -69,7 +69,7 @@ export default function AllGames() {
 
   const matches = (data?.[sel]?.matches || [])
     .filter((m) => m.court && m.court !== 'TBD')
-    .sort(scheduleCompare)
+    .sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0) || (a.rowIndex || 0) - (b.rowIndex || 0))
 
   return (
     <div>

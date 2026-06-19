@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Lock, Volleyball, SlidersHorizontal } from 'lucide-react'
-import { adminLogin, setToken, clearToken, tokenValid, updateScore } from '@/lib/api'
+import { adminLogin, setToken, clearToken, tokenValid, updateScore, getNotes, saveNotes } from '@/lib/api'
 import { useTournaments } from '@/lib/useTournament'
 import { useSelectedTournament } from '@/lib/useSelectedTournament'
 import { tournamentLabel, DATA_SOURCES, type Match } from '@/lib/tournament'
@@ -260,7 +260,7 @@ function ScoreEditor({ onExpired }: { onExpired: () => void }) {
   )
 }
 
-function SettingsPanel() {
+function SettingsPanel({ onExpired }: { onExpired: () => void }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language?.startsWith('en') ? 'en' : 'de'
   const s = getSettings()
@@ -268,11 +268,22 @@ function SettingsPanel() {
   const [refreshSeconds, setRefreshSeconds] = useState(String(s.refreshSeconds))
   const [tournaments, setTournaments] = useState<string[]>(s.tournaments)
   const [defaultLang, setDefaultLang] = useState<'de' | 'en'>(s.defaultLang)
+  // Notes are stored server-side (shared across all devices), not in localStorage.
+  const [notesDe, setNotesDe] = useState('')
+  const [notesEn, setNotesEn] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getNotes().then((n) => {
+      setNotesDe(n.notesDe)
+      setNotesEn(n.notesEn)
+    })
+  }, [])
 
   const toggle = (k: string) =>
     setTournaments((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]))
 
-  function save() {
+  async function save() {
     const tour = tournaments.length ? tournaments : ['men', 'women']
     saveSettings({
       courtCount: parseInt(courtCount, 10) || 0,
@@ -281,7 +292,16 @@ function SettingsPanel() {
       defaultLang,
     })
     setLang(defaultLang)
-    toast.success(t('settings.saved'))
+
+    setSaving(true)
+    const r = await saveNotes(notesDe.trim(), notesEn.trim())
+    setSaving(false)
+    if (r.status === 401) {
+      onExpired()
+      return
+    }
+    if (r.ok) toast.success(t('settings.saved'))
+    else toast.error(t('admin.saveError'))
   }
 
   return (
@@ -323,8 +343,36 @@ function SettingsPanel() {
             ))}
           </div>
         </div>
+        <div className="sm:col-span-2">
+          <span className="text-sm font-semibold text-foreground">{t('settings.notes')}</span>
+          <p className="mb-2 text-xs text-muted-foreground">{t('settings.notesHint')}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="notes-de">{t('settings.notesDe')}</Label>
+              <textarea
+                id="notes-de"
+                rows={3}
+                value={notesDe}
+                onChange={(e) => setNotesDe(e.target.value)}
+                placeholder={t('settings.notesPlaceholder')}
+                className="mt-1 flex w-full rounded-md border border-input bg-card px-3 py-2 text-base text-foreground shadow-sm transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+              />
+            </div>
+            <div>
+              <Label htmlFor="notes-en">{t('settings.notesEn')}</Label>
+              <textarea
+                id="notes-en"
+                rows={3}
+                value={notesEn}
+                onChange={(e) => setNotesEn(e.target.value)}
+                placeholder={t('settings.notesPlaceholder')}
+                className="mt-1 flex w-full rounded-md border border-input bg-card px-3 py-2 text-base text-foreground shadow-sm transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30"
+              />
+            </div>
+          </div>
+        </div>
       </div>
-      <Button onClick={save} className="mt-6">
+      <Button onClick={save} disabled={saving} className="mt-6">
         {t('settings.save')}
       </Button>
     </section>
@@ -355,7 +403,7 @@ export default function Admin() {
         </Button>
       </div>
       <ScoreEditor onExpired={onExpired} />
-      <SettingsPanel />
+      <SettingsPanel onExpired={onExpired} />
     </div>
   )
 }

@@ -45,6 +45,33 @@ var SET_COLS = [
   { a: 18, b: 20 }
 ];
 
+// Organizer notes (shown on the public start page) live in the script's
+// Property store, not in the sheets — they're a single global value, language
+// keyed. Read via doGet(?action=getNotes), written via doPost(action:setNotes).
+var NOTES_DE_KEY = 'NOTES_DE';
+var NOTES_EN_KEY = 'NOTES_EN';
+
+function getNotes_() {
+  var p = PropertiesService.getScriptProperties();
+  return { notesDe: p.getProperty(NOTES_DE_KEY) || '', notesEn: p.getProperty(NOTES_EN_KEY) || '' };
+}
+
+function doGet(e) {
+  try {
+    var params = (e && e.parameter) || {};
+    if (params.secret !== SECRET) {
+      return out({ ok: false, error: 'forbidden' });
+    }
+    if (params.action === 'getNotes') {
+      var n = getNotes_();
+      return out({ ok: true, notesDe: n.notesDe, notesEn: n.notesEn });
+    }
+    return out({ ok: false, error: 'bad_action' });
+  } catch (err) {
+    return out({ ok: false, error: String(err) });
+  }
+}
+
 function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
@@ -52,6 +79,15 @@ function doPost(e) {
     if (body.secret !== SECRET) {
       return out({ ok: false, error: 'forbidden' });
     }
+
+    // Notes write — no spreadsheet involved.
+    if (body.action === 'setNotes') {
+      var props = PropertiesService.getScriptProperties();
+      props.setProperty(NOTES_DE_KEY, String(body.notesDe == null ? '' : body.notesDe).slice(0, 2000));
+      props.setProperty(NOTES_EN_KEY, String(body.notesEn == null ? '' : body.notesEn).slice(0, 2000));
+      return out({ ok: true });
+    }
+
     var id = SPREADSHEETS[body.tournament];
     if (!id) {
       return out({ ok: false, error: 'bad_tournament' });

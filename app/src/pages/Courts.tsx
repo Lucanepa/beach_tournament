@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { CalendarX } from 'lucide-react'
+import { CalendarX, Info } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
 import { getSettings } from '@/lib/settings'
+import { getNotes } from '@/lib/api'
 import { scheduleCompare, type Match } from '@/lib/tournament'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -101,11 +103,27 @@ function CourtCard({ court, matches, index }: { court: string; matches: Match[];
 }
 
 export default function Courts() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data, isLoading } = useTournaments()
   const settings = getSettings()
   const useMen = settings.tournaments.includes('men')
   const useWomen = settings.tournaments.includes('women')
+  const lang = i18n.language?.startsWith('en') ? 'en' : 'de'
+
+  // Organizer notes live server-side (shared across devices). They change rarely,
+  // so poll on a slow cadence independent of the match-data refresh.
+  const [notes, setNotes] = useState({ notesDe: '', notesEn: '' })
+  useEffect(() => {
+    let alive = true
+    const load = () => getNotes().then((n) => alive && setNotes(n))
+    load()
+    const id = setInterval(load, 60_000)
+    return () => {
+      alive = false
+      clearInterval(id)
+    }
+  }, [])
+  const note = lang === 'en' ? notes.notesEn || notes.notesDe : notes.notesDe || notes.notesEn
 
   const men = data?.men
   const women = data?.women
@@ -135,6 +153,13 @@ export default function Courts() {
           {t('heading.courts')}
         </p>
       </section>
+
+      {note && (
+        <div className="mb-8 flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-coral bg-card p-4 shadow-[0_1px_2px_-1px_rgba(28,25,23,0.06),0_6px_20px_-8px_rgba(28,25,23,0.12)]">
+          <Info className="mt-0.5 size-5 shrink-0 text-coral" />
+          <p className="whitespace-pre-line text-sm font-medium text-navy">{note}</p>
+        </div>
+      )}
 
       {isLoading && !data ? (
         <p className="py-12 text-center text-muted-foreground">{t('loading.matches')}</p>

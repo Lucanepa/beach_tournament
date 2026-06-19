@@ -73,3 +73,32 @@ export async function updateScore(
     return { ok: false, status: 0, error: 'network' }
   }
 }
+
+export type Notes = { notesDe: string; notesEn: string }
+
+export async function getNotes(): Promise<Notes> {
+  try {
+    const res = await fetch('/api/notes', { cache: 'no-store' })
+    const data = await res.json().catch(() => ({}))
+    return { notesDe: String(data?.notesDe || ''), notesEn: String(data?.notesEn || '') }
+  } catch {
+    return { notesDe: '', notesEn: '' }
+  }
+}
+
+export async function saveNotes(
+  notesDe: string,
+  notesEn: string
+): Promise<{ ok: boolean; status: number; error?: string }> {
+  try {
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: getToken(), notesDe, notesEn }),
+    })
+    const data = await res.json().catch(() => ({}))
+    return { ok: res.ok && data.ok, status: res.status, error: data.error }
+  } catch {
+    return { ok: false, status: 0, error: 'network' }
+  }
+}
