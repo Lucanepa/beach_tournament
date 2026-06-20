@@ -11,16 +11,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-// Columns ordered so the FINAL sits in the centre: winners flow in from the
-// left, losers flow in from the right, finals in the middle.
-const COLUMNS: { key: string; nums: number[]; center?: boolean }[] = [
+// Semifinals sit dead centre; winners flow in from the left, losers from the
+// right. The Final (30) folds back to the LEFT of the semifinals and the 3rd/4th
+// (29) to the RIGHT — each alone in its column, so it auto-centres vertically.
+const COLUMNS: { key: string; nums: number[] }[] = [
   { key: 'bracket.roundI', nums: [1, 2, 3, 4, 5, 6, 7, 8] },
   { key: 'bracket.winnerR1', nums: [13, 14, 15, 16] },
   { key: 'bracket.winnerR2', nums: [21, 22] },
+  { key: 'bracket.finals', nums: [30] },
   { key: 'bracket.semifinals', nums: [27, 28] },
-  // Final (30) + 3rd/4th (29) clustered at the vertical centre so both
-  // semifinals feed the final with clean converging lines (no X-crossing).
-  { key: 'bracket.finals', nums: [30, 29], center: true },
+  { key: 'bracket.thirdPlace', nums: [29] },
   { key: 'bracket.loserR4', nums: [25, 26] },
   { key: 'bracket.loserR3', nums: [23, 24] },
   { key: 'bracket.loserR2', nums: [17, 18, 19, 20] },
@@ -279,39 +279,23 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
                 ))}
               </svg>
               {COLUMNS.map((col) => {
-                const isFinalCol = col.key === 'bracket.finals'
+                const isFinalCol = col.key === 'bracket.finals' || col.key === 'bracket.thirdPlace'
                 return (
-                  <div key={col.key} className={cn('flex shrink-0 flex-col', col.center ? 'w-[23rem]' : isFinalCol ? 'w-44' : 'w-40')}>
+                  <div key={col.key} className={cn('flex w-40 shrink-0 flex-col', isFinalCol && 'w-44')}>
                     <div className={cn('mb-3 text-center text-xs font-bold uppercase tracking-wide', isFinalCol ? 'text-coral' : 'text-muted-foreground')}>
                       {t(col.key)}
                     </div>
-                    {col.center ? (
-                      // Final + 3rd/4th sit on the same row at the vertical centre.
-                      <div className="flex flex-1 items-center justify-center gap-4" style={{ minHeight: COL_STACK_MIN_H }}>
-                        {col.nums.map((n) => (
-                          <div key={n} className="w-44 shrink-0">
-                            <BracketMatch
-                              match={byNum.get(n)}
-                              num={n}
-                              hidden={!!team && !pathSet.has(n)}
-                              highlighted={!!team && pathSet.has(n)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex flex-1 flex-col justify-around" style={{ minHeight: COL_STACK_MIN_H }}>
-                        {col.nums.map((n) => (
-                          <BracketMatch
-                            key={n}
-                            match={byNum.get(n)}
-                            num={n}
-                            hidden={!!team && !pathSet.has(n)}
-                            highlighted={!!team && pathSet.has(n)}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-1 flex-col justify-around" style={{ minHeight: COL_STACK_MIN_H }}>
+                      {col.nums.map((n) => (
+                        <BracketMatch
+                          key={n}
+                          match={byNum.get(n)}
+                          num={n}
+                          hidden={!!team && !pathSet.has(n)}
+                          highlighted={!!team && pathSet.has(n)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )
               })}
