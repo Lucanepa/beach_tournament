@@ -43,8 +43,7 @@ const EDGES: [number, number][] = [
   // Losers' bracket final → Semifinals — the cross-bracket feed where a
   // semifinalist's opponent comes from the far loser column, not a neighbour.
   [25, 27], [26, 28],
-  // Semifinals → Final (winners advance; the 3rd-place feeders are labels)
-  [27, 30], [28, 30],
+  // (Semifinals → Final/3rd is drawn separately as the central finals junction.)
   // Losers R1 → R2 (reversed pairing keeps the lines straight given column order)
   [12, 17], [11, 18], [10, 19], [9, 20],
   // Losers R2 → R3
@@ -199,6 +198,21 @@ function Bracket({ matches, label }: { matches: Match[]; label: string }) {
         const ex = ea.offsetLeft < eb.offsetLeft ? eb.offsetLeft : eb.offsetLeft + eb.offsetWidth
         const mx = (sx + ex) / 2
         next.push(`M ${sx} ${ay} L ${mx} ${ay} L ${mx} ${by} L ${ex} ${by}`)
+      }
+      // Finals junction (default view): one vertical line linking the two
+      // semifinals (27 top → 28 bottom), with the Final and the 3rd/4th place
+      // branching off its midpoint, mirrored left/right.
+      if (!team) {
+        const e27 = cards.get(27)
+        const e28 = cards.get(28)
+        const e30 = cards.get(30)
+        const e29 = cards.get(29)
+        if (e27 && e28 && e30 && e29) {
+          const xc = e27.offsetLeft + e27.offsetWidth / 2
+          const yc = (e27.offsetTop + e27.offsetHeight / 2 + e28.offsetTop + e28.offsetHeight / 2) / 2
+          next.push(`M ${xc} ${e27.offsetTop + e27.offsetHeight} L ${xc} ${e28.offsetTop}`)
+          next.push(`M ${e30.offsetLeft + e30.offsetWidth} ${yc} L ${e29.offsetLeft} ${yc}`)
+        }
       }
       setPaths(next)
       setSvgSize({ w: grid.scrollWidth, h: grid.scrollHeight })
