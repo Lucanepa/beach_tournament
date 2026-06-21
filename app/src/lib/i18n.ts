@@ -53,6 +53,11 @@ const de = {
   'heading.allGames': 'Alle Spiele',
   'heading.courts': 'Courts',
 
+  'qr.title': 'Live dabei',
+  'qr.subtitle': 'Scan für Live-Resultate',
+  'fullscreen.enter': 'Vollbild',
+  'fullscreen.exit': 'Vollbild beenden',
+
   'loading.matches': 'Lade Spieldaten…',
   'loading.tableau': 'Lade Tableau-Daten…',
   'loading.allGames': 'Lade alle Spiele…',
@@ -163,6 +168,11 @@ const en: typeof de = {
   'heading.tableau': 'Tableau & standings',
   'heading.allGames': 'All games',
   'heading.courts': 'Courts',
+
+  'qr.title': 'Follow live',
+  'qr.subtitle': 'Scan for live scores',
+  'fullscreen.enter': 'Fullscreen',
+  'fullscreen.exit': 'Exit fullscreen',
 
   'loading.matches': 'Loading match data…',
   'loading.tableau': 'Loading tableau data…',

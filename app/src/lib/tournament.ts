@@ -172,12 +172,14 @@ function parseMatches(sheet: XLSX.WorkSheet, tournament: string, layout: Layout)
     const isBlank = (v: any) => v === undefined || v === null || String(v).trim() === ''
     if (isBlank(team1) && isBlank(team2) && isBlank(matchNumber)) continue
 
-    let courtFormatted = 'TBD'
-    if (court !== null && court !== undefined && court !== '') {
-      courtFormatted = court === 0 ? 'TBD' : `Court ${court}`
-    }
-    const courtRaw: number | '' =
-      court === null || court === undefined || court === '' || court === 0 ? '' : Number(court)
+    // A court is "set" only when it's a positive number. Blank, 0, or any
+    // non-numeric marker (e.g. "bye" on a free-win row) counts as unset → TBD,
+    // so it never surfaces as a phantom "Court bye" card on the home page.
+    const courtNumber =
+      court === null || court === undefined || court === '' ? NaN : Number(court)
+    const courtIsSet = Number.isFinite(courtNumber) && courtNumber > 0
+    const courtFormatted = courtIsSet ? `Court ${courtNumber}` : 'TBD'
+    const courtRaw: number | '' = courtIsSet ? courtNumber : ''
 
     let timeFormatted = 'TBD'
     if (time !== null && time !== undefined && time !== '') {

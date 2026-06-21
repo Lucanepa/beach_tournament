@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'motion/react'
-import { CalendarX, Info, UserX } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+import { CalendarX, Info, Maximize, Minimize, UserX } from 'lucide-react'
 import { useTournaments } from '@/lib/useTournament'
 import { getSettings } from '@/lib/settings'
 import { getNotes } from '@/lib/api'
@@ -108,6 +109,48 @@ function CourtCard({ court, matches, index, highlight }: { court: string; matche
   )
 }
 
+// Spectator QR card — links phones to this very site for live scores. Lives in
+// its own right-hand column (see the page layout) so it never overlaps content,
+// even at 150% display scaling where the centred gutters collapse.
+function SideQR() {
+  const { t } = useTranslation()
+  const url = typeof window !== 'undefined' ? window.location.origin : ''
+  return (
+    <div className="sticky top-24 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/90 p-3 text-center shadow-[0_1px_2px_-1px_rgba(28,25,23,0.06),0_6px_20px_-8px_rgba(28,25,23,0.12)] backdrop-blur">
+      <span className="text-xs font-extrabold uppercase tracking-widest text-coral">{t('qr.title')}</span>
+      <div className="rounded-lg bg-white p-2">
+        <QRCodeSVG value={url} size={108} bgColor="#ffffff" fgColor="#16233f" level="M" />
+      </div>
+      <span className="text-[11px] font-semibold leading-tight text-muted-foreground">{t('qr.subtitle')}</span>
+    </div>
+  )
+}
+
+// Kiosk fullscreen toggle — handy when this runs on a venue display.
+function FullscreenToggle() {
+  const { t } = useTranslation()
+  const [isFs, setIsFs] = useState(false)
+  useEffect(() => {
+    const onChange = () => setIsFs(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggle = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.()
+    else document.documentElement.requestFullscreen?.()
+  }
+  return (
+    <button
+      onClick={toggle}
+      title={isFs ? t('fullscreen.exit') : t('fullscreen.enter')}
+      className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-navy backdrop-blur transition-colors hover:bg-primary hover:text-primary-foreground"
+    >
+      {isFs ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
+      <span className="hidden sm:inline">{isFs ? t('fullscreen.exit') : t('fullscreen.enter')}</span>
+    </button>
+  )
+}
+
 export default function Courts() {
   const { t, i18n } = useTranslation()
   const { data, isLoading } = useTournaments()
@@ -167,8 +210,10 @@ export default function Courts() {
     : courts
 
   return (
-    <div>
-      <section className="aurora mb-8 overflow-hidden rounded-2xl border border-border p-8 text-center">
+    <div className="lg:flex lg:items-start lg:gap-6">
+      <div className="lg:min-w-0 lg:flex-1">
+      <section className="aurora relative mb-8 overflow-hidden rounded-2xl border border-border p-8 text-center">
+        <FullscreenToggle />
         <h1 className="text-3xl font-extrabold uppercase tracking-tight text-navy sm:text-4xl">
           ZuZu Beach
         </h1>
@@ -203,12 +248,17 @@ export default function Courts() {
           <p className="text-muted-foreground">{t('empty.teamNotScheduled', { team })}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
           {shownCourts.map((court, i) => (
             <CourtCard key={court} court={court} matches={matchesForCourt(court)} index={i} highlight={team} />
           ))}
         </div>
       )}
+      </div>
+
+      <aside className="hidden w-36 shrink-0 lg:block">
+        <SideQR />
+      </aside>
     </div>
   )
 }
