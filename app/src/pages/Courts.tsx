@@ -223,7 +223,7 @@ export default function Courts() {
       </section>
 
       {note && (
-        <div className="mb-8 flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-coral bg-card p-4 shadow-[0_1px_2px_-1px_rgba(28,25,23,0.06),0_6px_20px_-8px_rgba(28,25,23,0.12)]">
+        <div data-kiosk-hide className="mb-8 flex items-start gap-3 rounded-xl border border-border border-l-4 border-l-coral bg-card p-4 shadow-[0_1px_2px_-1px_rgba(28,25,23,0.06),0_6px_20px_-8px_rgba(28,25,23,0.12)]">
           <Info className="mt-0.5 size-5 shrink-0 text-coral" />
           <p className="whitespace-pre-line text-sm font-medium text-navy">{note}</p>
         </div>

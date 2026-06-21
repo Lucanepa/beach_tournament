@@ -36,7 +36,7 @@ export default function Layout() {
   const { t } = useTranslation()
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 border-b-[3px] border-primary bg-card/85 backdrop-blur-md">
+      <header data-kiosk-hide className="sticky top-0 z-30 border-b-[3px] border-primary bg-card/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-3">
             <img src="/ZuZU.png" alt="ZuZu Beach" className="h-9 w-auto rounded" />

@@ -155,6 +155,13 @@
   .aurora, .shimmer::after, .gradient-border, .now-playing { animation: none !important; }
 }
 
+/* ── Kiosk fullscreen: collapse chrome to maximise court space ─────
+   The Courts view requests fullscreen on <html>. While it is active we
+   collapse the global nav bar and the organizer note so the court grid
+   gets the whole screen; Esc or the in-hero toggle still exits. */
+:fullscreen [data-kiosk-hide] { display: none !important; }
+:-webkit-full-screen [data-kiosk-hide] { display: none !important; }
+
 /* ── Mobile: show the wide tableau in landscape automatically ──────
    On a phone held in portrait we rotate the whole tableau 90° so the
    wide bracket fills the long screen edge. When the phone is turned to
