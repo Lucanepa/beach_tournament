@@ -110,13 +110,14 @@ function CourtCard({ court, matches, index, highlight }: { court: string; matche
 }
 
 // Spectator QR card — links phones to this very site for live scores. Lives in
-// its own right-hand column (see the page layout) so it never overlaps content,
-// even at 150% display scaling where the centred gutters collapse.
+// its own right-hand column (see the page layout) and is vertically centred
+// against the courts grid, so it sits level with the midpoint between the
+// men's and women's courts rather than pinned to the top.
 function SideQR() {
   const { t } = useTranslation()
   const url = typeof window !== 'undefined' ? window.location.origin : ''
   return (
-    <div className="sticky top-24 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/90 p-3 text-center shadow-[0_1px_2px_-1px_rgba(28,25,23,0.06),0_6px_20px_-8px_rgba(28,25,23,0.12)] backdrop-blur">
+    <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-card/90 p-3 text-center shadow-[0_1px_2px_-1px_rgba(28,25,23,0.06),0_6px_20px_-8px_rgba(28,25,23,0.12)] backdrop-blur">
       <span className="text-xs font-extrabold uppercase tracking-widest text-coral">{t('qr.title')}</span>
       <div className="rounded-lg bg-white p-2">
         <QRCodeSVG value={url} size={108} bgColor="#ffffff" fgColor="#16233f" level="M" />
@@ -210,8 +211,7 @@ export default function Courts() {
     : courts
 
   return (
-    <div className="lg:flex lg:items-start lg:gap-6">
-      <div className="lg:min-w-0 lg:flex-1">
+    <div>
       <section className="aurora relative mb-8 overflow-hidden rounded-2xl border border-border p-8 text-center">
         <FullscreenToggle />
         <h1 className="text-3xl font-extrabold uppercase tracking-tight text-navy sm:text-4xl">
@@ -233,32 +233,37 @@ export default function Courts() {
         <TeamFilter teams={teams} value={team} onChange={setTeam} />
       )}
 
-      {isLoading && !data ? (
-        <p className="py-12 text-center text-muted-foreground">{t('loading.matches')}</p>
-      ) : courts.length === 0 ? (
-        <div className="py-16 text-center">
-          <CalendarX className="mx-auto mb-3 size-12 text-border" />
-          <h3 className="text-xl font-bold uppercase text-navy">{t('court.noCourts')}</h3>
-          <p className="text-muted-foreground">{t('empty.noMatchesIndex')}</p>
+      {/* Courts grid + spectator QR share one row; the QR is vertically centred
+          against the grid so it lands level with the men's/women's midpoint. */}
+      <div className="lg:flex lg:items-stretch lg:gap-6">
+        <div className="lg:min-w-0 lg:flex-1">
+          {isLoading && !data ? (
+            <p className="py-12 text-center text-muted-foreground">{t('loading.matches')}</p>
+          ) : courts.length === 0 ? (
+            <div className="py-16 text-center">
+              <CalendarX className="mx-auto mb-3 size-12 text-border" />
+              <h3 className="text-xl font-bold uppercase text-navy">{t('court.noCourts')}</h3>
+              <p className="text-muted-foreground">{t('empty.noMatchesIndex')}</p>
+            </div>
+          ) : shownCourts.length === 0 ? (
+            <div className="py-16 text-center">
+              <UserX className="mx-auto mb-3 size-12 text-border" />
+              <h3 className="text-xl font-bold uppercase text-navy">{team}</h3>
+              <p className="text-muted-foreground">{t('empty.teamNotScheduled', { team })}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+              {shownCourts.map((court, i) => (
+                <CourtCard key={court} court={court} matches={matchesForCourt(court)} index={i} highlight={team} />
+              ))}
+            </div>
+          )}
         </div>
-      ) : shownCourts.length === 0 ? (
-        <div className="py-16 text-center">
-          <UserX className="mx-auto mb-3 size-12 text-border" />
-          <h3 className="text-xl font-bold uppercase text-navy">{team}</h3>
-          <p className="text-muted-foreground">{t('empty.teamNotScheduled', { team })}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-          {shownCourts.map((court, i) => (
-            <CourtCard key={court} court={court} matches={matchesForCourt(court)} index={i} highlight={team} />
-          ))}
-        </div>
-      )}
-      </div>
 
-      <aside className="hidden w-36 shrink-0 lg:block">
-        <SideQR />
-      </aside>
+        <aside className="mt-6 hidden shrink-0 self-stretch lg:mt-0 lg:flex lg:w-36 lg:items-center">
+          <SideQR />
+        </aside>
+      </div>
     </div>
   )
 }
