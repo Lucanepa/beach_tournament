@@ -127,9 +127,8 @@ function SideQR() {
   )
 }
 
-// Kiosk fullscreen toggle — handy when this runs on a venue display.
-function FullscreenToggle() {
-  const { t } = useTranslation()
+// Shared fullscreen state — kiosk displays toggle this to maximise the courts.
+function useFullscreen() {
   const [isFs, setIsFs] = useState(false)
   useEffect(() => {
     const onChange = () => setIsFs(!!document.fullscreenElement)
@@ -140,6 +139,14 @@ function FullscreenToggle() {
     if (document.fullscreenElement) document.exitFullscreen?.()
     else document.documentElement.requestFullscreen?.()
   }
+  return { isFs, toggle }
+}
+
+// "Vollbild" button in the hero. The hero collapses once fullscreen is active,
+// so this button only ever needs to enter — exiting is handled by KioskExitButton.
+function HeroFullscreenButton() {
+  const { t } = useTranslation()
+  const { isFs, toggle } = useFullscreen()
   return (
     <button
       onClick={toggle}
@@ -148,6 +155,25 @@ function FullscreenToggle() {
     >
       {isFs ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
       <span className="hidden sm:inline">{isFs ? t('fullscreen.exit') : t('fullscreen.enter')}</span>
+    </button>
+  )
+}
+
+// Floating exit button — display is driven by CSS (data-kiosk-only: hidden by
+// default, shown only in fullscreen). It lives at the page root so the
+// data-kiosk-hide sweep that collapses the chrome doesn't take it down too.
+function KioskExitButton() {
+  const { t } = useTranslation()
+  const { toggle } = useFullscreen()
+  return (
+    <button
+      data-kiosk-only
+      onClick={toggle}
+      title={t('fullscreen.exit')}
+      className="fixed right-4 top-4 z-50 items-center gap-1.5 rounded-full border border-border bg-card/85 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-navy shadow-md backdrop-blur transition-colors hover:bg-primary hover:text-primary-foreground"
+    >
+      <Minimize className="size-3.5" />
+      <span>{t('fullscreen.exit')}</span>
     </button>
   )
 }
@@ -212,8 +238,9 @@ export default function Courts() {
 
   return (
     <div>
-      <section className="aurora relative mb-8 overflow-hidden rounded-2xl border border-border p-8 text-center">
-        <FullscreenToggle />
+      <KioskExitButton />
+      <section data-kiosk-hide className="aurora relative mb-8 overflow-hidden rounded-2xl border border-border p-8 text-center">
+        <HeroFullscreenButton />
         <h1 className="text-3xl font-extrabold uppercase tracking-tight text-navy sm:text-4xl">
           ZuZu Beach
         </h1>
@@ -230,7 +257,9 @@ export default function Courts() {
       )}
 
       {!isLoading && courts.length > 0 && (
-        <TeamFilter teams={teams} value={team} onChange={setTeam} />
+        <div data-kiosk-hide>
+          <TeamFilter teams={teams} value={team} onChange={setTeam} />
+        </div>
       )}
 
       {/* Courts grid + spectator QR share one row; the QR is vertically centred
